@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<p:FatturaElettronica versione="FPR12" xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2">
+  <FatturaElettronicaHeader>
+    <DatiTrasmissione>
+      <IdTrasmittente><IdPaese>IT</IdPaese><IdCodice>09876543210</IdCodice></IdTrasmittente>
+      <ProgressivoInvio>778</ProgressivoInvio>
+      <FormatoTrasmissione>FPR12</FormatoTrasmissione>
+      <CodiceDestinatario>ABCDEFG</CodiceDestinatario>
+    </DatiTrasmissione>
+    <CedentePrestatore>
+      <DatiAnagrafici>
+        <IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>09876543210</IdCodice></IdFiscaleIVA>
+        <Anagrafica><Denominazione>TESSUTI NORD DEMO SRL</Denominazione></Anagrafica>
+        <RegimeFiscale>RF01</RegimeFiscale>
+      </DatiAnagrafici>
+      <Sede><Indirizzo>Via dei Telai 5</Indirizzo><CAP>59100</CAP><Comune>Prato</Comune><Provincia>PO</Provincia><Nazione>IT</Nazione></Sede>
+    </CedentePrestatore>
+    <CessionarioCommittente>
+      <DatiAnagrafici>
+        <IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>01234567890</IdCodice></IdFiscaleIVA>
+        <Anagrafica><Denominazione>MOAI ATHLETICS DEMO SRL</Denominazione></Anagrafica>
+      </DatiAnagrafici>
+      <Sede><Indirizzo>Via della Disciplina 1</Indirizzo><CAP>20121</CAP><Comune>Milano</Comune><Provincia>MI</Provincia><Nazione>IT</Nazione></Sede>
+    </CessionarioCommittente>
+  </FatturaElettronicaHeader>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento>
+        <TipoDocumento>TD01</TipoDocumento>
+        <Divisa>EUR</Divisa>
+        <Data>2026-09-30</Data>
+        <Numero>778</Numero>
+        <ImportoTotaleDocumento>1220.00</ImportoTotaleDocumento>
+        <Causale>Fornitura tessuto tecnico MOTION - lotto 09/2026</Causale>
+      </DatiGeneraliDocumento>
+    </DatiGenerali>
+    <DatiBeniServizi>
+      <DettaglioLinee>
+        <NumeroLinea>1</NumeroLinea>
+        <Descrizione>Tessuto tecnico poliammide 180g - nero</Descrizione>
+        <Quantita>80.00</Quantita>
+        <UnitaMisura>MT</UnitaMisura>
+        <PrezzoUnitario>10.00</PrezzoUnitario>
+        <PrezzoTotale>800.00</PrezzoTotale>
+        <AliquotaIVA>22.00</AliquotaIVA>
+      </DettaglioLinee>
+      <DettaglioLinee>
+        <NumeroLinea>2</NumeroLinea>
+        <Descrizione>Tessuto tecnico poliammide 180g - crocus</Descrizione>
+        <Quantita>20.00</Quantita>
+        <UnitaMisura>MT</UnitaMisura>
+        <PrezzoUnitario>10.00</PrezzoUnitario>
+        <PrezzoTotale>200.00</PrezzoTotale>
+        <AliquotaIVA>22.00</AliquotaIVA>
+      </DettaglioLinee>
+      <DatiRiepilogo>
+        <AliquotaIVA>22.00</AliquotaIVA>
+        <ImponibileImporto>1000.00</ImponibileImporto>
+        <Imposta>220.00</Imposta>
+        <EsigibilitaIVA>I</EsigibilitaIVA>
+      </DatiRiepilogo>
+    </DatiBeniServizi>
+    <DatiPagamento>
+      <CondizioniPagamento>TP01</CondizioniPagamento>
+      <DettaglioPagamento>
+        <ModalitaPagamento>MP05</ModalitaPagamento>
+        <DataScadenzaPagamento>2026-10-30</DataScadenzaPagamento>
+        <ImportoPagamento>610.00</ImportoPagamento>
+        <IBAN>IT60X0542811101000000123456</IBAN>
+      </DettaglioPagamento>
+      <DettaglioPagamento>
+        <ModalitaPagamento>MP05</ModalitaPagamento>
+        <DataScadenzaPagamento>2026-11-29</DataScadenzaPagamento>
+        <ImportoPagamento>610.00</ImportoPagamento>
+        <IBAN>IT60X0542811101000000123456</IBAN>
+      </DettaglioPagamento>
+    </DatiPagamento>
+  </FatturaElettronicaBody>
+</p:FatturaElettronica>

@@ -1,0 +1,779 @@
+// MOAI OS — data model
+//
+// Conventions
+// - Every business row belongs to exactly one Organization (tenant isolation).
+// - Amounts: Decimal(18,4). Never Float. Currency is always stored next to the amount (ISO 4217).
+// - Timestamps are stored in UTC (timestamptz). Presentation uses Organization.timezone.
+// - Rows coming from external systems carry (source, externalId) with a unique constraint
+//   per organization: re-importing the same data updates instead of duplicating.
+// - Soft delete via deletedAt; nothing financial is ever hard-deleted by the app.
+// - isDemo marks fictitious data created by the demo seed. It is never mixed with real data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  OPERATIONS
+  VIEWER
+}
+
+enum IntegrationProvider {
+  SHOPIFY
+  ARUBA
+  PACKLINK
+  PAYMENT_GATEWAY
+  BANK
+}
+
+enum ConnectionStatus {
+  NOT_CONFIGURED
+  PENDING_VERIFICATION
+  CONNECTED
+  BLOCKED // credentials present but an authorization/plan requirement is missing
+  ERROR
+  DISABLED
+}
+
+enum DataSource {
+  SHOPIFY
+  ARUBA_API
+  XML_UPLOAD
+  PAYMENT_API
+  PAYMENT_CSV
+  BANK_CSV
+  PACKLINK_API
+  PACKLINK_CSV
+  MANUAL
+  DEMO
+}
+
+enum PaymentLedger {
+  ORDER // what the store says the customer paid (Shopify order transactions)
+  PROCESSOR // what the gateway's own ledger says (fees, net, payout link)
+}
+
+enum PaymentKind {
+  AUTHORIZATION
+  CAPTURE
+  SALE
+  REFUND
+  CHARGEBACK
+  CHARGEBACK_REVERSAL
+  FEE
+  ADJUSTMENT
+  VOID
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+  ERROR
+  VOIDED
+}
+
+enum PayoutStatus {
+  SCHEDULED
+  IN_TRANSIT
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum InvoiceDirection {
+  ACTIVE // emessa (ciclo attivo)
+  PASSIVE // ricevuta (ciclo passivo)
+}
+
+enum InvoicePaymentStatus {
+  UNKNOWN
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum ShipmentStatus {
+  PENDING
+  READY
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+  RETURNED
+  CANCELLED
+  UNKNOWN
+}
+
+enum ReconciliationType {
+  PAYMENT_ORDER // processor transaction ↔ order
+  PAYOUT_BANK // gateway payout ↔ bank credit
+  INVOICE_ORDER // invoice ↔ order
+}
+
+enum ReconciliationStatus {
+  AUTO_MATCHED // deterministic rule, exact identifiers
+  SUGGESTED // plausible, needs a human
+  CONFIRMED // human confirmed
+  REJECTED // human rejected
+}
+
+enum MatchConfidence {
+  EXACT
+  HIGH
+  LOW
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED // will retry
+  DEAD // retries exhausted, needs a human
+  CANCELLED
+}
+
+enum DocumentKind {
+  INVOICE_XML
+  INVOICE_P7M
+  CSV_IMPORT
+}
+
+enum ImportKind {
+  PAYMENTS
+  PAYOUTS
+  BANK
+  SHIPMENTS
+  INVOICES
+}
+
+// ─────────────────────── Identity & tenancy ───────────────────────
+
+model Organization {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  vatNumber    String? // Partita IVA without country prefix, used to classify invoices
+  fiscalCode   String?
+  countryCode  String    @default("IT")
+  timezone     String    @default("Europe/Rome")
+  baseCurrency String    @default("EUR")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  memberships         Membership[]
+  sessions            Session[]
+  connections         IntegrationConnection[]
+  customers           Customer[]
+  products            Product[]
+  variants            ProductVariant[]
+  orders              Order[]
+  orderItems          OrderItem[]
+  paymentTransactions PaymentTransaction[]
+  payouts             Payout[]
+  bankTransactions    BankTransaction[]
+  invoices            Invoice[]
+  invoiceLines        InvoiceLine[]
+  invoiceInstallments InvoiceInstallment[]
+  shipments           Shipment[]
+  inventoryMovements  InventoryMovement[]
+  reconciliations     Reconciliation[]
+  syncJobs            SyncJob[]
+  auditLogs           AuditLog[]
+  documents           Document[]
+  importBatches       ImportBatch[]
+  webhookEvents       WebhookEvent[]
+  csvMappingPresets   CsvMappingPreset[]
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique // always stored lowercase
+  name             String
+  passwordHash     String
+  totpSecretEnc    String? // AES-256-GCM encrypted TOTP secret
+  mfaEnabledAt     DateTime?
+  recoveryCodes    String[] // scrypt hashes, single use
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  memberships Membership[]
+  sessions    Session[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role         @default(VIEWER)
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+model Session {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique // sha256 of the cookie token; the token itself is never stored
+  userId         String
+  organizationId String
+  mfaVerified    Boolean      @default(false)
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime     @default(now())
+  lastSeenAt     DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([userId])
+}
+
+// ─────────────────────────── Integrations ───────────────────────────
+
+model IntegrationConnection {
+  id             String              @id @default(cuid())
+  organizationId String
+  provider       IntegrationProvider
+  key            String // "shopify" | "aruba" | "packlink" | "paypal" | "stripe" | ...
+  displayName    String
+  status         ConnectionStatus    @default(NOT_CONFIGURED)
+  environment    String              @default("production") // production | demo | sandbox
+  config         Json                @default("{}") // non-secret settings
+  secretsEnc     String? // AES-256-GCM encrypted JSON blob; never sent to the browser
+  grantedScopes  String[]
+  capabilities   Json                @default("{}") // result of the last capability probe
+  blockedReason  String?
+  lastVerifiedAt DateTime?
+  lastSyncAt     DateTime?
+  lastError      String?
+  cursors        Json                @default("{}") // incremental sync checkpoints
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  syncJobs       SyncJob[]
+
+  @@unique([organizationId, key])
+}
+
+model WebhookEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  source         DataSource
+  eventId        String // provider event id, used for deduplication
+  topic          String
+  receivedAt     DateTime     @default(now())
+  jobId          String?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, source, eventId])
+}
+
+// ─────────────────────────── Commerce ───────────────────────────
+
+model Customer {
+  id              String       @id @default(cuid())
+  organizationId  String
+  source          DataSource
+  externalId      String
+  displayName     String? // only stored when the scope and the org setting allow PII
+  email           String?
+  ordersCount     Int          @default(0)
+  amountSpent     Decimal?     @db.Decimal(18, 4)
+  currency        String?
+  sourceCreatedAt DateTime?
+  sourceUpdatedAt DateTime?
+  syncedAt        DateTime     @default(now())
+  isDemo          Boolean      @default(false)
+  piiRedactedAt   DateTime? // GDPR erasure (customers/redact)
+  deletedAt       DateTime?
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  orders          Order[]
+
+  @@unique([organizationId, source, externalId])
+}
+
+model Product {
+  id              String           @id @default(cuid())
+  organizationId  String
+  source          DataSource
+  externalId      String
+  title           String
+  handle          String?
+  status          String?
+  vendor          String?
+  productType     String?
+  sourceUpdatedAt DateTime?
+  syncedAt        DateTime         @default(now())
+  isDemo          Boolean          @default(false)
+  deletedAt       DateTime?
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  variants        ProductVariant[]
+
+  @@unique([organizationId, source, externalId])
+}
+
+model ProductVariant {
+  id                String              @id @default(cuid())
+  organizationId    String
+  productId         String
+  source            DataSource
+  externalId        String
+  sku               String?
+  title             String
+  price             Decimal             @db.Decimal(18, 4)
+  currency          String
+  inventoryQuantity Int?
+  sourceUpdatedAt   DateTime?
+  syncedAt          DateTime            @default(now())
+  isDemo            Boolean             @default(false)
+  deletedAt         DateTime?
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  product           Product             @relation(fields: [productId], references: [id])
+  orderItems        OrderItem[]
+  movements         InventoryMovement[]
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, sku])
+}
+
+model Order {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  source              DataSource
+  externalId          String // e.g. gid://shopify/Order/123
+  name                String // e.g. #1001
+  customerId          String?
+  currency            String // shop currency
+  presentmentCurrency String?
+  subtotalPrice       Decimal              @db.Decimal(18, 4)
+  totalDiscounts      Decimal              @default(0) @db.Decimal(18, 4)
+  totalShipping       Decimal              @default(0) @db.Decimal(18, 4)
+  totalTax            Decimal              @default(0) @db.Decimal(18, 4)
+  totalPrice          Decimal              @db.Decimal(18, 4)
+  totalRefunded       Decimal              @default(0) @db.Decimal(18, 4)
+  financialStatus     String // PAID, PARTIALLY_REFUNDED, REFUNDED, PENDING, AUTHORIZED, VOIDED, ...
+  fulfillmentStatus   String // UNFULFILLED, FULFILLED, PARTIALLY_FULFILLED, ...
+  paymentGateways     String[]
+  tags                String[]
+  test                Boolean              @default(false)
+  processedAt         DateTime // when the order was placed (UTC)
+  cancelledAt         DateTime?
+  closedAt            DateTime?
+  sourceUpdatedAt     DateTime
+  syncedAt            DateTime             @default(now())
+  isDemo              Boolean              @default(false)
+  deletedAt           DateTime?
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  customer            Customer?            @relation(fields: [customerId], references: [id])
+  items               OrderItem[]
+  payments            PaymentTransaction[]
+  invoices            Invoice[]
+  shipments           Shipment[]
+  reconciliations     Reconciliation[]
+  inventoryMovements  InventoryMovement[]
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, processedAt])
+  @@index([organizationId, name])
+}
+
+model OrderItem {
+  id             String          @id @default(cuid())
+  organizationId String
+  orderId        String
+  externalId     String
+  variantId      String?
+  sku            String?
+  title          String
+  quantity       Int
+  unitPrice      Decimal         @db.Decimal(18, 4)
+  totalDiscount  Decimal         @default(0) @db.Decimal(18, 4)
+  currency       String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant        ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@unique([organizationId, externalId])
+}
+
+// ─────────────────────────── Money ───────────────────────────
+
+model PaymentTransaction {
+  id                         String           @id @default(cuid())
+  organizationId             String
+  source                     DataSource
+  ledger                     PaymentLedger
+  provider                   String // shopify_payments | paypal | stripe | satispay | klarna | manual | ...
+  externalId                 String
+  kind                       PaymentKind
+  status                     PaymentStatus
+  amount                     Decimal          @db.Decimal(18, 4) // always positive; sign comes from kind
+  fee                        Decimal?         @db.Decimal(18, 4)
+  net                        Decimal?         @db.Decimal(18, 4)
+  currency                   String
+  processedAt                DateTime
+  gateway                    String?
+  orderId                    String?
+  orderRef                   String? // raw order reference as seen at the source (#1001, order id, invoice no.)
+  parentExternalId           String?
+  payoutId                   String?
+  payoutExternalId           String?
+  orderTransactionExternalId String? // for PROCESSOR rows: the matching ORDER-ledger transaction, when the source says so
+  importBatchId              String?
+  raw                        Json?
+  syncedAt                   DateTime         @default(now())
+  isDemo                     Boolean          @default(false)
+  deletedAt                  DateTime?
+  organization               Organization     @relation(fields: [organizationId], references: [id])
+  order                      Order?           @relation(fields: [orderId], references: [id])
+  payout                     Payout?          @relation(fields: [payoutId], references: [id])
+  importBatch                ImportBatch?     @relation(fields: [importBatchId], references: [id])
+  reconciliations            Reconciliation[]
+
+  @@unique([organizationId, provider, ledger, externalId])
+  @@index([organizationId, processedAt])
+  @@index([organizationId, payoutExternalId])
+}
+
+model Payout {
+  id              String               @id @default(cuid())
+  organizationId  String
+  source          DataSource
+  provider        String
+  externalId      String
+  status          PayoutStatus
+  issuedAt        DateTime
+  arrivalDate     DateTime?
+  grossAmount     Decimal?             @db.Decimal(18, 4)
+  feeAmount       Decimal?             @db.Decimal(18, 4)
+  netAmount       Decimal              @db.Decimal(18, 4) // amount expected on the bank account
+  currency        String
+  bankReference   String?
+  importBatchId   String?
+  syncedAt        DateTime             @default(now())
+  isDemo          Boolean              @default(false)
+  deletedAt       DateTime?
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  importBatch     ImportBatch?         @relation(fields: [importBatchId], references: [id])
+  transactions    PaymentTransaction[]
+  reconciliations Reconciliation[]
+
+  @@unique([organizationId, provider, externalId])
+}
+
+model BankTransaction {
+  id              String           @id @default(cuid())
+  organizationId  String
+  source          DataSource
+  accountLabel    String // e.g. "Conto principale"; IBAN is not required
+  externalId      String // bank id, or a stable hash of the CSV row
+  bookingDate     DateTime
+  valueDate       DateTime?
+  amount          Decimal          @db.Decimal(18, 4) // signed: + credit, - debit
+  currency        String
+  description     String
+  counterparty    String?
+  reference       String?
+  importBatchId   String?
+  syncedAt        DateTime         @default(now())
+  isDemo          Boolean          @default(false)
+  deletedAt       DateTime?
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  importBatch     ImportBatch?     @relation(fields: [importBatchId], references: [id])
+  reconciliations Reconciliation[]
+
+  @@unique([organizationId, accountLabel, externalId])
+  @@index([organizationId, bookingDate])
+}
+
+// ─────────────────────────── Invoices ───────────────────────────
+
+model Invoice {
+  id                 String               @id @default(cuid())
+  organizationId     String
+  source             DataSource
+  direction          InvoiceDirection
+  dedupeKey          String // direction:senderVat:docType:number:date — fiscally unique
+  arubaId            String?
+  sdiId              String?
+  filename           String?
+  bodyIndex          Int                  @default(0) // position inside a multi-invoice file (lotto)
+  documentType       String // TD01, TD04 (nota di credito), ...
+  number             String
+  issueDate          DateTime
+  currency           String
+  totalAmount        Decimal              @db.Decimal(18, 4)
+  taxableAmount      Decimal              @db.Decimal(18, 4)
+  taxAmount          Decimal              @db.Decimal(18, 4)
+  senderName         String
+  senderVat          String?
+  senderFiscalCode   String?
+  senderCountry      String?
+  receiverName       String
+  receiverVat        String?
+  receiverFiscalCode String?
+  receiverCountry    String?
+  causale            String?
+  orderReference     String? // DatiOrdineAcquisto/IdDocumento
+  sdiStatus          String?
+  sdiStatusCode      Int?
+  paymentStatus      InvoicePaymentStatus @default(UNKNOWN)
+  nextDueDate        DateTime?
+  orderId            String?
+  documentId         String?
+  parseWarnings      String[]
+  syncedAt           DateTime             @default(now())
+  isDemo             Boolean              @default(false)
+  deletedAt          DateTime?
+  organization       Organization         @relation(fields: [organizationId], references: [id])
+  order              Order?               @relation(fields: [orderId], references: [id])
+  document           Document?            @relation(fields: [documentId], references: [id])
+  lines              InvoiceLine[]
+  installments       InvoiceInstallment[]
+  reconciliations    Reconciliation[]
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, issueDate])
+  @@index([organizationId, direction, number])
+}
+
+model InvoiceLine {
+  id             String       @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  lineNumber     Int
+  description    String
+  quantity       Decimal?     @db.Decimal(18, 4)
+  unitPrice      Decimal      @db.Decimal(18, 6)
+  totalPrice     Decimal      @db.Decimal(18, 4)
+  vatRate        Decimal      @db.Decimal(6, 2)
+  natura         String? // N1..N7 when VAT is 0
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, lineNumber])
+}
+
+model InvoiceInstallment {
+  id             String       @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  position       Int
+  method         String? // MP01 contanti, MP05 bonifico, MP08 carta, ...
+  dueDate        DateTime?
+  amount         Decimal      @db.Decimal(18, 4)
+  iban           String?
+  paidAt         DateTime? // set manually or by reconciliation, never inferred silently
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, position])
+}
+
+// ─────────────────────────── Logistics ───────────────────────────
+
+model Shipment {
+  id                   String         @id @default(cuid())
+  organizationId       String
+  source               DataSource
+  externalId           String
+  orderId              String?
+  shopifyFulfillmentId String?
+  packlinkReference    String?
+  carrier              String?
+  service              String?
+  trackingNumber       String?
+  trackingUrl          String?
+  status               ShipmentStatus @default(UNKNOWN)
+  rawStatus            String?
+  shippedAt            DateTime?
+  deliveredAt          DateTime?
+  lastEventAt          DateTime?
+  cost                 Decimal?       @db.Decimal(18, 4)
+  costCurrency         String?
+  costSource           DataSource?
+  problem              Boolean        @default(false)
+  problemReason        String?
+  importBatchId        String?
+  syncedAt             DateTime       @default(now())
+  isDemo               Boolean        @default(false)
+  deletedAt            DateTime?
+  organization         Organization   @relation(fields: [organizationId], references: [id])
+  order                Order?         @relation(fields: [orderId], references: [id])
+  importBatch          ImportBatch?   @relation(fields: [importBatchId], references: [id])
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, trackingNumber])
+  @@index([organizationId, packlinkReference])
+}
+
+model InventoryMovement {
+  id             String         @id @default(cuid())
+  organizationId String
+  variantId      String
+  source         DataSource
+  externalId     String? // dedup key when the source provides one
+  quantityDelta  Int
+  quantityAfter  Int?
+  reason         String // SYNC_SNAPSHOT | SALE | RETURN | ADJUSTMENT | RESTOCK
+  orderId        String?
+  occurredAt     DateTime
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  variant        ProductVariant @relation(fields: [variantId], references: [id])
+  order          Order?         @relation(fields: [orderId], references: [id])
+
+  @@unique([organizationId, source, externalId])
+  @@index([organizationId, variantId, occurredAt])
+}
+
+// ─────────────────────────── Reconciliation ───────────────────────────
+
+model Reconciliation {
+  id                   String               @id @default(cuid())
+  organizationId       String
+  type                 ReconciliationType
+  pairKey              String // type:leftId:rightId — prevents duplicate proposals
+  status               ReconciliationStatus
+  confidence           MatchConfidence
+  rule                 String // id of the deterministic rule that produced it
+  explanation          String
+  amountDifference     Decimal?             @db.Decimal(18, 4)
+  paymentTransactionId String?
+  payoutId             String?
+  bankTransactionId    String?
+  orderId              String?
+  invoiceId            String?
+  decidedById          String?
+  decidedAt            DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  organization         Organization         @relation(fields: [organizationId], references: [id])
+  paymentTransaction   PaymentTransaction?  @relation(fields: [paymentTransactionId], references: [id])
+  payout               Payout?              @relation(fields: [payoutId], references: [id])
+  bankTransaction      BankTransaction?     @relation(fields: [bankTransactionId], references: [id])
+  order                Order?               @relation(fields: [orderId], references: [id])
+  invoice              Invoice?             @relation(fields: [invoiceId], references: [id])
+
+  @@unique([organizationId, pairKey])
+  @@index([organizationId, type, status])
+}
+
+// ─────────────────────────── Operations ───────────────────────────
+
+model SyncJob {
+  id             String                 @id @default(cuid())
+  organizationId String
+  connectionId   String?
+  type           String // e.g. shopify.orders.sync
+  status         JobStatus              @default(QUEUED)
+  payload        Json                   @default("{}")
+  dedupeKey      String? // at most one QUEUED/RUNNING job per key (enforced in code + advisory lock)
+  attempts       Int                    @default(0)
+  maxAttempts    Int                    @default(5)
+  runAt          DateTime               @default(now())
+  lockedAt       DateTime?
+  lockedBy       String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  lastError      String?
+  result         Json?
+  log            String[]
+  triggeredBy    String // "schedule" | "webhook" | "user:<id>" | "retry"
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   Organization           @relation(fields: [organizationId], references: [id])
+  connection     IntegrationConnection? @relation(fields: [connectionId], references: [id])
+
+  @@index([status, runAt])
+  @@index([organizationId, createdAt])
+  @@index([dedupeKey, status])
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String // e.g. auth.login, integration.update, reconciliation.confirm
+  entityType     String?
+  entityId       String?
+  ip             String?
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model Document {
+  id             String        @id @default(cuid())
+  organizationId String
+  kind           DocumentKind
+  storageKey     String // opaque key in private storage; never a public URL
+  filename       String
+  mimeType       String
+  size           Int
+  sha256         String
+  uploadedById   String?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  invoices       Invoice[]
+  importBatches  ImportBatch[]
+
+  @@unique([organizationId, sha256])
+}
+
+model ImportBatch {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  kind                ImportKind
+  provider            String?
+  presetName          String?
+  documentId          String?
+  rowsTotal           Int                  @default(0)
+  rowsImported        Int                  @default(0)
+  rowsUpdated         Int                  @default(0)
+  rowsSkipped         Int                  @default(0)
+  errors              Json                 @default("[]")
+  createdById         String?
+  createdAt           DateTime             @default(now())
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  document            Document?            @relation(fields: [documentId], references: [id])
+  paymentTransactions PaymentTransaction[]
+  payouts             Payout[]
+  bankTransactions    BankTransaction[]
+  shipments           Shipment[]
+}
+
+model CsvMappingPreset {
+  id             String       @id @default(cuid())
+  organizationId String
+  kind           ImportKind
+  name           String
+  mapping        Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, kind, name])
+}

@@ -1,0 +1,13 @@
+node_modules
+.next
+.env
+.env.local
+.local
+storage
+coverage
+*.log
+next-env.d.ts
+.local-*.log
+
+# Credenziali di sviluppo locale in chiaro: restano sul Mac, mai in git
+docs/DEMO.md

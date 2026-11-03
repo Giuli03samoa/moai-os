@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* MOAI Athletics palette (brand guide Softriver 2026) */
+@theme {
+  --color-blackout: #222222;
+  --color-crocus: #eae7e7;
+  --color-graphite: #6e7180;
+  --color-space: #9da2b3;
+  --color-steel: #bcbfcc;
+  --color-smoke: #d3d6e0;
+  --color-cloud: #edeff7;
+
+  --color-ok: #3f6f4f;
+  --color-ok-bg: #e3efe6;
+  --color-warn: #8a6a1f;
+  --color-warn-bg: #f4ecd6;
+  --color-bad: #8c3a3a;
+  --color-bad-bg: #f3e0e0;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-card: 14px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-crocus text-blackout antialiased;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.03em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* subtle chevron pattern for the sidebar footer */
+.chevron-pattern {
+  background-image: repeating-linear-gradient(135deg, rgba(234, 231, 231, 0.06) 0 2px, transparent 2px 12px),
+    repeating-linear-gradient(45deg, rgba(234, 231, 231, 0.06) 0 2px, transparent 2px 12px);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+}
