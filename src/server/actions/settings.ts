@@ -117,25 +117,9 @@ export async function changePasswordAction(formData: FormData) {
 /** Removes every row flagged isDemo. Real data is never touched. */
 export async function deleteDemoDataAction() {
   const auth = await requireAuth("ADMIN");
-  const orgId = auth.organizationId;
-  const counts = await db.$transaction(async (tx) => {
-    const demoOrderIds = (await tx.order.findMany({ where: { organizationId: orgId, isDemo: true }, select: { id: true } })).map((o) => o.id);
-    const demoInvoiceIds = (await tx.invoice.findMany({ where: { organizationId: orgId, isDemo: true }, select: { id: true } })).map((i) => i.id);
-    await tx.reconciliation.deleteMany({ where: { organizationId: orgId, OR: [{ orderId: { in: demoOrderIds } }, { invoiceId: { in: demoInvoiceIds } }, { paymentTransaction: { isDemo: true } }, { payout: { isDemo: true } }, { bankTransaction: { isDemo: true } }] } });
-    const r = {
-      payments: (await tx.paymentTransaction.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      payouts: (await tx.payout.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      bank: (await tx.bankTransaction.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      shipments: (await tx.shipment.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      invoices: (await tx.invoice.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      orders: (await tx.order.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      variants: (await tx.productVariant.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      products: (await tx.product.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-      customers: (await tx.customer.deleteMany({ where: { organizationId: orgId, isDemo: true } })).count,
-    };
-    return r;
-  });
-  await audit({ organizationId: orgId, userId: auth.userId, action: "demo.delete", metadata: counts });
+  const { deleteDemoData } = await import("../demo");
+  const counts = await deleteDemoData(auth.organizationId);
+  await audit({ organizationId: auth.organizationId, userId: auth.userId, action: "demo.delete", metadata: counts });
   revalidatePath("/");
   back(`Dati demo eliminati: ${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", ")}.`);
 }
