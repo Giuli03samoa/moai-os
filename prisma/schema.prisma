@@ -38,6 +38,7 @@ enum IntegrationProvider {
   GOOGLE_ANALYTICS
   KLAVIYO
   TELEGRAM
+  EMAIL
 }
 
 enum ConnectionStatus {

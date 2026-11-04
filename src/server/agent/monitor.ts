@@ -3,7 +3,7 @@ import { db } from "../db";
 import { agentMonthlyBudgetUsd } from "./config";
 import { monthSpendUsd } from "./engine";
 import { expirePendingApprovals } from "./approvals";
-import { sendTelegram, telegramEnabled } from "../notify/telegram";
+import { notifyCriticalAlerts } from "../notify";
 
 /**
  * Proactive monitor: rule-based (no LLM), runs every scheduler cycle. Each rule produces alerts
@@ -149,10 +149,9 @@ export async function runMonitor(organizationId: string): Promise<{ created: num
       resolved++;
     }
   }
-  if (newCritical.length && (await telegramEnabled(organizationId, "sendCriticalAlerts"))) {
-    const text = `MOAI OS · avvisi critici\n\n${newCritical.map((c) => `• ${c.title}\n  ${c.body}`).join("\n\n")}`;
-    const r = await sendTelegram(organizationId, text, { reason: "monitor.critical" });
-    if (r.ok) notified = newCritical.length;
+  if (newCritical.length) {
+    const channels = await notifyCriticalAlerts(organizationId, newCritical);
+    if (channels.length) notified = newCritical.length;
   }
   return { created, updated, resolved, notified };
 }

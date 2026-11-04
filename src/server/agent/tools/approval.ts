@@ -4,6 +4,7 @@ import { audit } from "../../audit";
 import { decideReconciliation } from "../../reconciliation/engine";
 import { refreshInvoicePaymentStatus } from "../../invoices/archive";
 import { sendTelegram } from "../../notify/telegram";
+import { sendEmail } from "../../notify/email";
 import { defineTool, plain, ToolError } from "./types";
 
 /**
@@ -76,4 +77,18 @@ export const sendTelegramMessage = defineTool({
   },
 });
 
-export const APPROVAL_TOOLS = [decideReconciliationTool, markInstallmentPaid, updateShipmentTool, sendTelegramMessage];
+export const sendEmailMessage = defineTool({
+  name: "send_email",
+  description: "Propone l'invio di un'email (oggetto + testo markdown) alla casella configurata nel connettore Email, es. un riepilogo o un promemoria. Inviata solo dopo approvazione; il destinatario non è modificabile.",
+  schema: z.object({ subject: z.string().min(2).max(150), markdown: z.string().min(1).max(8000) }),
+  risk: "approval",
+  minRole: "OPERATIONS",
+  summarize: (i) => `Invia email "${i.subject}"`,
+  async run(ctx, input) {
+    const r = await sendEmail(ctx.organizationId, { subject: input.subject, markdown: input.markdown, reason: "agent-approval", userId: ctx.userId });
+    if (!r.ok) throw new ToolError(r.error ?? "Invio fallito");
+    return { sent: true };
+  },
+});
+
+export const APPROVAL_TOOLS = [decideReconciliationTool, markInstallmentPaid, updateShipmentTool, sendTelegramMessage, sendEmailMessage];

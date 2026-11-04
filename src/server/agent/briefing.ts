@@ -6,7 +6,7 @@ import { resolvePeriod } from "../../lib/periods";
 import { isAgentConfigured } from "./config";
 import { completeOnce } from "./engine";
 import { BRIEFING_SYSTEM } from "./prompt";
-import { sendTelegram, telegramEnabled } from "../notify/telegram";
+import { notifyBriefing } from "../notify";
 
 /**
  * Daily briefing. Facts are gathered from the database; the text is written by Claude when the
@@ -120,8 +120,6 @@ export async function generateBriefing(organizationId: string, opts: { force?: b
     create: { organizationId, date: data.date, content, summary, data: data as unknown as Prisma.InputJsonValue, generatedBy, runId },
     update: { content, summary, data: data as unknown as Prisma.InputJsonValue, generatedBy, runId },
   });
-  if ((opts.notify ?? true) && !existing && (await telegramEnabled(organizationId, "sendBriefing"))) {
-    await sendTelegram(organizationId, `MOAI OS · briefing ${data.date}\n\n${content}`, { reason: "briefing" });
-  }
+  if ((opts.notify ?? true) && !existing) await notifyBriefing(organizationId, data.date, content);
   return { id: b.id, date: b.date, generatedBy, created: true };
 }

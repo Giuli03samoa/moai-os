@@ -16,7 +16,7 @@ MOAI OS 2.0 mette al centro un agente: un assistente che legge tutti i dati del 
 | Cockpit | `list_alerts`, `list_tasks` | `create_task`, `update_task`, `update_alert` | |
 | Design Studio | `list_design_projects`, `get_design_project` | `create_design_project`, `update_design_project`, `add_design_sketch`, `render_mockup` | |
 | Produzione e costi | `list_production_orders`, `list_expenses` | `create_supplier`, `create_production_order`, `update_production_order`, `add_expense` | |
-| Marketing | `get_marketing_overview` | | `send_telegram_message` |
+| Marketing e notifiche | `get_marketing_overview` | | `send_telegram_message`, `send_email` |
 | Memoria e skill | `search_memory`, `list_skills`, `load_skill` | `remember`, `forget` | |
 | Audit | `get_audit_recent` (ADMIN) | | |
 
@@ -50,8 +50,8 @@ Playbook markdown caricati su richiesta con `load_skill` (`src/server/agent/skil
 
 ## Monitor e briefing
 
-- `agent.monitor` (ogni ciclo dello scheduler, 15 minuti): regole deterministiche in `monitor.ts` (`computeAlerts`, testata) producono avvisi con chiave stabile: ordini pagati non evasi da 48 ore, spedizioni problematiche, transazioni gateway non riconciliate da oltre 7 giorni, proposte di riconciliazione, fatture passive in scadenza o scadute, job DEAD, integrazioni in errore/bloccate/ferme, scorte sotto soglia (`LOW_STOCK_THRESHOLD`), ordini di produzione in ritardo, task scaduti, approvazioni in attesa, budget assistente, settimana senza ordini. Gli avvisi si aggiornano invece di duplicarsi e si risolvono da soli quando la condizione sparisce. Gli avvisi critici nuovi possono essere inviati su Telegram.
-- `agent.briefing` (una volta al giorno, dalle 7:00 nel fuso dell'organizzazione): raccoglie i fatti (ieri, mese in corso, mese scorso, avvisi, task, approvazioni, integrazioni, marketing) e scrive il briefing con Claude (effort low) oppure con regole fisse se la chiave API manca. Visibile nel cockpit, inviabile su Telegram.
+- `agent.monitor` (ogni ciclo dello scheduler, 15 minuti): regole deterministiche in `monitor.ts` (`computeAlerts`, testata) producono avvisi con chiave stabile: ordini pagati non evasi da 48 ore, spedizioni problematiche, transazioni gateway non riconciliate da oltre 7 giorni, proposte di riconciliazione, fatture passive in scadenza o scadute, job DEAD, integrazioni in errore/bloccate/ferme, scorte sotto soglia (`LOW_STOCK_THRESHOLD`), ordini di produzione in ritardo, task scaduti, approvazioni in attesa, budget assistente, settimana senza ordini. Gli avvisi si aggiornano invece di duplicarsi e si risolvono da soli quando la condizione sparisce. Gli avvisi critici nuovi possono essere inviati via email e Telegram (opzioni nei connettori).
+- `agent.briefing` (una volta al giorno, dalle 7:00 nel fuso dell'organizzazione): raccoglie i fatti (ieri, mese in corso, mese scorso, avvisi, task, approvazioni, integrazioni, marketing) e scrive il briefing con Claude (effort low) oppure con regole fisse se la chiave API manca. Visibile nel cockpit, inviabile via email (connettore SMTP) e Telegram.
 
 ## Costi e limiti
 

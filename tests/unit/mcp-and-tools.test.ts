@@ -25,7 +25,7 @@ describe("tool registry", () => {
   it("never defines a tool that writes to external systems", () => {
     const forbidden = /shopify_(write|update|create)|send_sdi|refund|create_shipment|pay_/i;
     expect(ALL_TOOLS.some((t) => forbidden.test(t.name))).toBe(false);
-    expect(ALL_TOOLS.filter((t) => t.risk === "approval").map((t) => t.name).sort()).toEqual(["decide_reconciliation", "mark_installment_paid", "send_telegram_message", "update_shipment"]);
+    expect(ALL_TOOLS.filter((t) => t.risk === "approval").map((t) => t.name).sort()).toEqual(["decide_reconciliation", "mark_installment_paid", "send_email", "send_telegram_message", "update_shipment"]);
   });
   it("jsonSchemaOf strips $schema and keeps required/optional", () => {
     const tool = ALL_TOOLS.find((t) => t.name === "create_task")!;

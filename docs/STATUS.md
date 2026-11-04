@@ -5,7 +5,7 @@
 | Componente | Stato | Nota |
 |---|---|---|
 | Motore agente (Claude, tool tipizzati, streaming SSE, storico append-only, costi) | ✅ codice · ⏳ collaudo | Verificato senza chiave API: UI, approvazioni, monitor, briefing a regole. La prima conversazione reale richiede `ANTHROPIC_API_KEY`. |
-| 25 strumenti di lettura, 14 di scrittura interna, 4 con approvazione umana | ✅ | Nessuno scrive su Shopify/Aruba/Packlink/gateway/SdI. Test sul registro. |
+| 25 strumenti di lettura, 14 di scrittura interna, 5 con approvazione umana | ✅ | Nessuno scrive su Shopify/Aruba/Packlink/gateway/SdI. Test sul registro. |
 | Approvazioni umane (AgentApproval) con esecuzione a nome dell'approvatore e audit | ✅ | Scadenza 7 giorni. |
 | Monitor avvisi (15 regole deterministiche, dedupe, auto-risoluzione) | ✅ | Job `agent.monitor` ogni 15 min; regole testate. |
 | Briefing giornaliero (Claude o regole) | ✅ | Job `agent.briefing` dalle 7:00; rigenerabile dal cockpit. |
@@ -13,7 +13,7 @@
 | Design Studio: progetti, sketch SVG con brand check, mockup, riferimenti, tech pack stampabile | ✅ | Brand check e mockup testati. |
 | Produzione e costi: fornitori, ordini di produzione, spese, stima margine | ✅ | Dati gestionali, non contabili. |
 | Marketing: connettori Meta (Instagram/Facebook/Ads), GA4, Klaviyo | ✅ codice · ✗ collaudo | Sola lettura. Nessun account reale collegato: la verifica registra in Capabilities cosa restituisce l'API. |
-| Telegram (briefing e avvisi critici in uscita, messaggi dell'agente con approvazione) | ✅ codice · ✗ collaudo | Nessun bot configurato. |
+| Email SMTP e Telegram (briefing e avvisi critici in uscita, messaggi dell'agente con approvazione) | ✅ codice · ✗ collaudo | Scelta di Giulio: email. Da configurare con una password per le app. |
 | Server MCP (`/api/mcp`, solo lettura, token hashati) | ✅ | Test JSON-RPC; da provare con Claude Code. |
 | Test | ✅ | 67 unitari (38 preesistenti + 29 nuovi) verdi; 5 di integrazione preesistenti. |
 

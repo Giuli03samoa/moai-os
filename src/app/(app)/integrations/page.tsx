@@ -16,7 +16,7 @@ export default async function IntegrationsPage() {
     { title: "Logistica", keys: ["packlink"] },
     { title: "Pagamenti", keys: listConnectors().filter((c) => c.provider === "PAYMENT_GATEWAY").map((c) => c.key) },
     { title: "Marketing", keys: ["meta", "ga4", "klaviyo"] },
-    { title: "Notifiche", keys: ["telegram"] },
+    { title: "Notifiche", keys: ["email", "telegram"] },
   ];
   return (
     <div>

@@ -131,7 +131,7 @@ export default async function AssistantPage({ searchParams }: { searchParams: Pr
               <ul className="list-disc space-y-1 pl-4">
                 <li><Badge tone="muted">legge</Badge> ordini, pagamenti, fatture, spedizioni, prodotti, marketing, produzione, avvisi, task</li>
                 <li><Badge tone="ok">esegue</Badge> task, memoria, spese, fornitori, progetti e sketch di design, avvio sync (tracciati nell&apos;audit)</li>
-                <li><Badge tone="warn">propone</Badge> riconciliazioni, rate pagate, modifiche spedizioni, messaggi Telegram → le approvi tu</li>
+                <li><Badge tone="warn">propone</Badge> riconciliazioni, rate pagate, modifiche spedizioni, email e messaggi Telegram → le approvi tu</li>
                 <li><Badge tone="bad">mai</Badge> scritture su Shopify, Aruba, Packlink, gateway, SdI, pagamenti</li>
               </ul>
             </CardContent>
