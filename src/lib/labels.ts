@@ -4,6 +4,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   SHOPIFY: "Shopify",
   ARUBA_API: "Aruba API",
   XML_UPLOAD: "XML caricato",
+  PEC_EMAIL: "PEC Legalmail",
   PAYMENT_API: "API gateway",
   PAYMENT_CSV: "CSV gateway",
   BANK_CSV: "CSV banca",

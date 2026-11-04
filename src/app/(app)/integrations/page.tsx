@@ -12,7 +12,7 @@ export default async function IntegrationsPage() {
   const byKey = new Map(connections.map((c) => [c.key, c]));
   const groups = [
     { title: "Ecommerce", keys: ["shopify"] },
-    { title: "Fatturazione", keys: ["aruba"] },
+    { title: "Fatturazione", keys: ["legalmail", "aruba"] },
     { title: "Logistica", keys: ["packlink"] },
     { title: "Pagamenti", keys: listConnectors().filter((c) => c.provider === "PAYMENT_GATEWAY").map((c) => c.key) },
     { title: "Marketing", keys: ["meta", "ga4", "klaviyo"] },

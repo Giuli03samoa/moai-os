@@ -25,7 +25,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Integration code (Prisma, node:crypto) must stay server-side only.
-  serverExternalPackages: ["@prisma/client", "embedded-postgres"],
+  serverExternalPackages: ["@prisma/client", "embedded-postgres", "imapflow", "mailparser", "nodemailer"],
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

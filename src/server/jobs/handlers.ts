@@ -3,6 +3,7 @@ import { syncShopifyCustomers, syncShopifyOrders, syncShopifyPayments, syncShopi
 import { syncArubaInvoices } from "../connectors/aruba/sync";
 import { detectShipmentProblems, refreshPacklinkShipments } from "../connectors/packlink/sync";
 import { runReconciliation } from "../reconciliation/engine";
+import { syncLegalmailInvoices } from "../connectors/legalmail/sync";
 import { syncMetaInsights } from "../connectors/meta/sync";
 import { syncGa4Report } from "../connectors/ga4/sync";
 import { syncKlaviyoMetrics } from "../connectors/klaviyo/connector";
@@ -18,6 +19,7 @@ export const handlers: Record<string, JobHandler> = {
   "aruba.invoices.sync": syncArubaInvoices,
   "packlink.shipments.refresh": refreshPacklinkShipments,
   "shipments.detect_problems": detectShipmentProblems,
+  "legalmail.invoices.sync": syncLegalmailInvoices,
   "meta.insights.sync": syncMetaInsights,
   "ga4.report.sync": syncGa4Report,
   "klaviyo.metrics.sync": syncKlaviyoMetrics,
@@ -47,6 +49,7 @@ export const JOB_LABELS: Record<string, string> = {
   "packlink.shipments.refresh": "Packlink · spedizioni",
   "shipments.detect_problems": "Spedizioni · controllo anomalie",
   "reconciliation.run": "Riconciliazione",
+  "legalmail.invoices.sync": "Legalmail · fatture da PEC",
   "meta.insights.sync": "Meta · Instagram e Ads",
   "ga4.report.sync": "Google Analytics · sito",
   "klaviyo.metrics.sync": "Klaviyo · email",

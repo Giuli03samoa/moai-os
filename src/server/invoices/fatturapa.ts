@@ -58,7 +58,11 @@ export function decodeInvoiceFile(filename: string, content: Buffer): { xml: str
   let bytes = content;
   let signed = false;
   if (looksLikeP7m(filename, content)) {
-    bytes = extractP7mPayload(content);
+    try {
+      bytes = extractP7mPayload(content);
+    } catch (e) {
+      throw new InvoiceParseError(`File .p7m non leggibile: ${(e as Error).message}`);
+    }
     signed = true;
   }
   if (bytes.length > MAX_XML_BYTES) throw new InvoiceParseError("XML troppo grande (max 5 MB)");

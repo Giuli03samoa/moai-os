@@ -14,8 +14,9 @@
 | Produzione e costi: fornitori, ordini di produzione, spese, stima margine | ✅ | Dati gestionali, non contabili. |
 | Marketing: connettori Meta (Instagram/Facebook/Ads), GA4, Klaviyo | ✅ codice · ✗ collaudo | Sola lettura. Nessun account reale collegato: la verifica registra in Capabilities cosa restituisce l'API. |
 | Email SMTP e Telegram (briefing e avvisi critici in uscita, messaggi dell'agente con approvazione) | ✅ codice · ✗ collaudo | Scelta di Giulio: email. Da configurare con una password per le app. |
+| Legalmail: fatture da PEC via IMAP in sola lettura | ✅ codice · ⏳ collaudo reale | Testato con messaggi PEC simulati e casella finta; da collaudare sulla casella reale. Aruba disattivato: API non abilitate (errore 0093). |
 | Server MCP (`/api/mcp`, solo lettura, token hashati) | ✅ | Test JSON-RPC; da provare con Claude Code. |
-| Test | ✅ | 67 unitari (38 preesistenti + 29 nuovi) verdi; 5 di integrazione preesistenti. |
+| Test | ✅ | 83 unitari e 10 di integrazione verdi; build di produzione ok. |
 
 ## MVP v1.0 — Definition of Done
 

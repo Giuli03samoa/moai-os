@@ -123,3 +123,14 @@ I dati finiscono in `MarketingSnapshot` (un record per canale e giorno, con le s
 ## Server MCP
 
 `POST /api/mcp` espone gli strumenti di lettura dell'assistente ad altri agenti (Claude Code, Claude Desktop su HTTPS). Token Bearer creati in Impostazioni, salvati come hash, con scadenza e revoca. Vedi `docs/AGENT.md`.
+
+
+## Legalmail (PEC) — fatture ricevute via posta certificata
+
+Connettore `legalmail`: legge la casella via IMAP (`mbox.cert.legalmail.it:993`, userID InfoCert) e copia in archivio le fatture FatturaPA.
+
+- **Sola lettura**: la cartella si apre con EXAMINE; se il server non conferma la sola lettura, l'operazione si ferma. I messaggi restano non letti e al loro posto; nessun invio.
+- **Cosa estrae**: apre la busta PEC (`postacert.eml`) e prende i file `.xml` / `.p7m` di fattura, scartando `daticert.xml`, firma e file di servizio SdI (`_MT_`, `_RC_`, `_NS_`…).
+- **Cosa conserva**: solo le fatture intestate alla P.IVA dell'organizzazione. Testi, altri allegati e ricevute PEC non vengono salvati né registrati nei log.
+- **Riprese e duplicati**: cursore per UID (riparte da zero se cambia UIDVALIDITY), blocchi da 100 messaggi; le fatture si deduplicano per chiave fiscale. Un allegato illeggibile viene contato e saltato; un errore di rete fa riprovare senza saltare messaggi.
+- **Limiti**: vede solo ciò che arriva su quella casella; non è conservazione a norma; la firma `.p7m` non viene verificata.
