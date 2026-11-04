@@ -1,6 +1,9 @@
 import { requireAuth, hasRole } from "@/server/auth/session";
 import { db } from "@/server/db";
-import { changePasswordAction, createUserAction, deleteDemoDataAction, removeUserAction, resetUserMfaAction, setUserRoleAction, updateOrgAction } from "@/server/actions/settings";
+import { changePasswordAction, createApiTokenAction, createUserAction, deleteDemoDataAction, removeUserAction, resetUserMfaAction, revokeApiTokenAction, setUserRoleAction, updateOrgAction } from "@/server/actions/settings";
+import { agentEffort, agentModel, agentMonthlyBudgetUsd, isAgentConfigured } from "@/server/agent/config";
+import { monthSpendUsd } from "@/server/agent/engine";
+import { toolCatalog } from "@/server/agent/tools/registry";
 import { fmtDate } from "@/lib/format";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Notice, PageHeader, Select, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
@@ -8,7 +11,7 @@ import { Button } from "@/components/ui/button";
 const ROLES = ["OWNER", "ADMIN", "ACCOUNTANT", "OPERATIONS", "VIEWER"] as const;
 const ROLE_HELP: Record<string, string> = { OWNER: "tutto, inclusi altri owner", ADMIN: "integrazioni, utenti, impostazioni", ACCOUNTANT: "riconciliazione, pagamenti fatture, import", OPERATIONS: "sync, upload XML, import CSV, spedizioni", VIEWER: "sola lettura ed export" };
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string; token?: string }> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
   const isAdmin = hasRole(auth.role, "ADMIN");
@@ -19,9 +22,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     db.order.count({ where: { organizationId: auth.organizationId, isDemo: true } }),
     db.session.count({ where: { organizationId: auth.organizationId, revokedAt: null, expiresAt: { gt: new Date() } } }),
   ]);
+  const [spent, runs, tokens] = await Promise.all([
+    monthSpendUsd(auth.organizationId),
+    db.agentRun.groupBy({ by: ["kind"], where: { organizationId: auth.organizationId, startedAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } }, _count: { _all: true }, _sum: { costUsd: true, inputTokens: true, outputTokens: true } }),
+    isAdmin ? db.apiToken.findMany({ where: { organizationId: auth.organizationId }, orderBy: { createdAt: "desc" }, include: { organization: { select: { id: true } } } }) : Promise.resolve([]),
+  ]);
+  const mcpUrl = `${process.env.APP_URL ?? "http://localhost:3000"}/api/mcp`;
   return (
     <div>
-      <PageHeader title="Settings" subtitle={`Organizzazione, utenti e sicurezza. Sessioni attive: ${sessions}.`} />
+      <PageHeader title="Impostazioni" subtitle={`Organizzazione, utenti e sicurezza. Sessioni attive: ${sessions}.`} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -81,6 +90,42 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             ) : null}
           </CardContent>
         </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle>Assistente</CardTitle><CardDescription>Modello {agentModel()} · effort {agentEffort()} · budget mensile {agentMonthlyBudgetUsd()} USD (AGENT_MODEL, AGENT_EFFORT, AGENT_MONTHLY_BUDGET_USD nel file .env). La chiave API resta solo sul server.</CardDescription></CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr]">
+            <div className="text-sm">
+              <p className="flex items-center gap-2">Stato: {isAgentConfigured() ? <Badge tone="ok">configurato</Badge> : <Badge tone="warn">ANTHROPIC_API_KEY mancante</Badge>}</p>
+              <p className="mt-2">Speso questo mese: <strong className="tabular">{spent.toFixed(2)} USD</strong> su {agentMonthlyBudgetUsd()}.</p>
+              <ul className="mt-2 text-xs text-graphite">{runs.map((r) => <li key={r.kind}>{r.kind}: {r._count._all} esecuzioni · {Number(r._sum.costUsd ?? 0).toFixed(3)} USD · {r._sum.inputTokens ?? 0} token in / {r._sum.outputTokens ?? 0} out</li>)}{runs.length === 0 ? <li>Nessuna esecuzione questo mese.</li> : null}</ul>
+              {!isAgentConfigured() ? <p className="mt-3 rounded-lg border border-warn/30 bg-warn-bg p-2 text-xs text-warn">Per attivarlo: crea una chiave su console.anthropic.com, aggiungi <code>ANTHROPIC_API_KEY=…</code> al file <code>.env</code> nella cartella moai-os e riavvia <code>npm run dev</code>.</p> : null}
+            </div>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-sm">Strumenti dell'assistente ({toolCatalog().length})</summary>
+              <ul className="mt-2 max-h-72 overflow-y-auto">{toolCatalog().map((t) => <li key={t.name} className="flex items-start gap-2 border-b border-smoke/60 py-1"><Badge tone={t.risk === "read" ? "muted" : t.risk === "write" ? "ok" : "warn"}>{t.risk === "read" ? "legge" : t.risk === "write" ? "scrive" : "approvazione"}</Badge><span className="font-mono">{t.name}</span><span className="text-graphite">≥ {t.minRole}</span></li>)}</ul>
+            </details>
+          </CardContent>
+        </Card>
+
+        {isAdmin ? (
+          <Card className="lg:col-span-2">
+            <CardHeader><CardTitle>Accesso MCP (Claude Desktop, Claude Code)</CardTitle><CardDescription>Espone gli strumenti di sola lettura di MOAI OS ad altri agenti via Model Context Protocol. Endpoint: <code>{mcpUrl}</code>. I token sono mostrati una sola volta e salvati solo come hash; nessuna scrittura è possibile via MCP.</CardDescription></CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {sp.token ? <Notice tone="ok"><p className="text-xs">Token (copialo ora, non verrà più mostrato):</p><code className="block break-all text-xs">{sp.token}</code><p className="mt-2 text-xs">Claude Code: <code>claude mcp add --transport http moai-os {mcpUrl} --header &quot;Authorization: Bearer {sp.token}&quot;</code></p></Notice> : null}
+              {tokens.length ? (
+                <Table>
+                  <THead><TR><TH>Nome</TH><TH>Creato</TH><TH>Ultimo uso</TH><TH>Scade</TH><TH>Stato</TH><TH></TH></TR></THead>
+                  <TBody>{tokens.map((t) => <TR key={t.id}><TD className="font-medium">{t.name}</TD><TD className="text-xs">{fmtDate(t.createdAt, auth.timezone, true)}</TD><TD className="text-xs">{t.lastUsedAt ? fmtDate(t.lastUsedAt, auth.timezone, true) : "mai"}</TD><TD className="text-xs">{fmtDate(t.expiresAt, auth.timezone)}</TD><TD>{t.revokedAt ? <Badge tone="muted">revocato</Badge> : t.expiresAt && t.expiresAt < new Date() ? <Badge tone="muted">scaduto</Badge> : <Badge tone="ok">attivo</Badge>}</TD><TD>{!t.revokedAt ? <form action={revokeApiTokenAction}><input type="hidden" name="id" value={t.id} /><Button size="sm" variant="ghost" className="text-bad">Revoca</Button></form> : null}</TD></TR>)}</TBody>
+                </Table>
+              ) : <p className="text-sm text-graphite">Nessun token.</p>}
+              <form action={createApiTokenAction} className="flex flex-wrap items-end gap-2">
+                <Field label="Nome"><Input name="name" placeholder="Claude Desktop di Giulio" className="w-56" /></Field>
+                <Field label="Durata (giorni)"><Input name="days" type="number" min={1} max={365} defaultValue={90} className="w-28" /></Field>
+                <Button type="submit" size="sm">Crea token</Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {isAdmin ? (
           <Card className="lg:col-span-2">

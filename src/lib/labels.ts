@@ -9,6 +9,10 @@ export const SOURCE_LABEL: Record<string, string> = {
   BANK_CSV: "CSV banca",
   PACKLINK_API: "Packlink API",
   PACKLINK_CSV: "CSV Packlink",
+  META_API: "Meta API",
+  GA4_API: "Google Analytics",
+  KLAVIYO_API: "Klaviyo",
+  AGENT: "Assistente",
   MANUAL: "Manuale",
   DEMO: "Demo",
 };
@@ -60,3 +64,27 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   TD01: "Fattura", TD02: "Acconto", TD03: "Acconto parcella", TD04: "Nota di credito", TD05: "Nota di debito", TD06: "Parcella", TD07: "Fattura semplificata", TD08: "NC semplificata", TD09: "ND semplificata",
   TD16: "Integrazione RC interno", TD17: "Integrazione acquisto estero", TD18: "Integrazione intra beni", TD19: "Integrazione art.17 c.2", TD20: "Autofattura regolarizzazione", TD24: "Fattura differita", TD25: "Fattura differita triang.", TD26: "Cessione beni ammortizzabili", TD27: "Autoconsumo",
 };
+
+export const TASK_STATUS_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" }> = {
+  OPEN: { label: "Aperto", tone: "muted" }, IN_PROGRESS: { label: "In corso", tone: "warn" }, DONE: { label: "Fatto", tone: "ok" }, CANCELLED: { label: "Annullato", tone: "muted" },
+};
+export const TASK_PRIORITY_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" | "dark" }> = {
+  LOW: { label: "Bassa", tone: "muted" }, NORMAL: { label: "Normale", tone: "muted" }, HIGH: { label: "Alta", tone: "warn" }, URGENT: { label: "Urgente", tone: "bad" },
+};
+export const ALERT_SEVERITY_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" }> = {
+  INFO: { label: "Info", tone: "muted" }, WARNING: { label: "Attenzione", tone: "warn" }, CRITICAL: { label: "Critico", tone: "bad" },
+};
+export const ALERT_STATUS_LABEL: Record<string, string> = { OPEN: "Aperto", ACKNOWLEDGED: "Preso in carico", SNOOZED: "Posticipato", RESOLVED: "Risolto" };
+export const APPROVAL_STATUS_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" }> = {
+  PENDING: { label: "In attesa", tone: "warn" }, APPROVED: { label: "Approvata ed eseguita", tone: "ok" }, REJECTED: { label: "Rifiutata", tone: "muted" }, EXPIRED: { label: "Scaduta", tone: "muted" }, FAILED: { label: "Fallita", tone: "bad" },
+};
+export const DESIGN_STAGE_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" | "dark" }> = {
+  IDEA: { label: "Idea", tone: "muted" }, CONCEPT: { label: "Concept", tone: "muted" }, BRIEF: { label: "Brief", tone: "warn" }, SAMPLE: { label: "Campione", tone: "warn" }, APPROVED: { label: "Approvato", tone: "ok" }, PRODUCTION: { label: "In produzione", tone: "dark" }, ARCHIVED: { label: "Archiviato", tone: "muted" },
+};
+export const DESIGN_LINE_LABEL: Record<string, string> = { ESSENTIALS: "ESSENTIALS", MOTION: "MOTION", CAPSULE: "Capsule", MERCH: "Merch" };
+export const ASSET_KIND_LABEL: Record<string, string> = { SKETCH: "Sketch", MOCKUP: "Mockup", TECHPACK: "Tech pack", REFERENCE: "Riferimento" };
+export const PRODUCTION_STATUS_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "muted" | "dark" }> = {
+  PLANNED: { label: "Pianificato", tone: "muted" }, QUOTED: { label: "Preventivato", tone: "muted" }, ORDERED: { label: "Ordinato", tone: "warn" }, IN_PRODUCTION: { label: "In produzione", tone: "warn" }, SHIPPED: { label: "Spedito", tone: "dark" }, RECEIVED: { label: "Ricevuto", tone: "ok" }, CANCELLED: { label: "Annullato", tone: "muted" },
+};
+export const EXPENSE_CATEGORY_LABEL: Record<string, string> = { COGS: "Costo del venduto", SAMPLES: "Campioni", MARKETING: "Marketing", LOGISTICS: "Logistica", SOFTWARE: "Software", FEES: "Commissioni", PHOTOGRAPHY: "Foto e video", CONSULTING: "Consulenze", OTHER: "Altro" };
+export const CHANNEL_LABEL: Record<string, string> = { instagram: "Instagram", facebook: "Facebook", meta_ads: "Meta Ads", web: "Sito (GA4)", email: "Email (Klaviyo)" };

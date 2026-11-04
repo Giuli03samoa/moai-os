@@ -11,3 +11,4 @@ next-env.d.ts
 
 # Credenziali di sviluppo locale in chiaro: restano sul Mac, mai in git
 docs/DEMO.md
+.DS_Store

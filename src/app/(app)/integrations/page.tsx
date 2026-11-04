@@ -15,10 +15,12 @@ export default async function IntegrationsPage() {
     { title: "Fatturazione", keys: ["aruba"] },
     { title: "Logistica", keys: ["packlink"] },
     { title: "Pagamenti", keys: listConnectors().filter((c) => c.provider === "PAYMENT_GATEWAY").map((c) => c.key) },
+    { title: "Marketing", keys: ["meta", "ga4", "klaviyo"] },
+    { title: "Notifiche", keys: ["telegram"] },
   ];
   return (
     <div>
-      <PageHeader title="Integrations" subtitle="Ogni connettore è un modulo indipendente con credenziali cifrate, verifica, job e note sui requisiti. Le credenziali non lasciano mai il server." />
+      <PageHeader title="Integrazioni" subtitle="Ogni connettore è un modulo indipendente con credenziali cifrate, verifica, job e note sui requisiti. Le credenziali non lasciano mai il server." />
       <div className="flex flex-col gap-8">
         {groups.map((g) => (
           <section key={g.title}>

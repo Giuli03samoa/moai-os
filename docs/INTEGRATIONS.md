@@ -106,3 +106,19 @@ Fonti del monitoraggio, in ordine:
 4. **Aggiornamenti manuali tracciati** (Shipping → dettaglio) con audit log.
 
 Segnalazioni automatiche (`shipments.detect_problems`): nessun evento da 7 giorni, eccezione/reso del corriere; ordini pagati non evasi con giorni di attesa nella lista "da preparare".
+
+
+## Connettori aggiunti nella 2.0 (sola lettura, non collaudati su account reali)
+
+| Connettore | Credenziali | Cosa legge | Job |
+|---|---|---|---|
+| **Meta · Instagram & Ads** (`meta`) | access token long-lived (System User) con `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`, `ads_read`; ID account IG, pagina FB, ad account | follower, reach giornaliero, ultimi 25 post con like/commenti, spesa/impression/click campagne (7 giorni) | `meta.insights.sync` |
+| **Google Analytics 4** (`ga4`) | JSON del service account (aggiunto come Viewer sulla proprietà) + Property ID | sessioni, utenti, nuovi utenti, pagine viste, eventi chiave, acquisti e ricavi per giorno (14 giorni) | `ga4.report.sync` |
+| **Klaviyo** (`klaviyo`) | private API key con scope di lettura | numero liste, campagne email inviate negli ultimi 30 giorni | `klaviyo.metrics.sync` |
+| **Telegram** (`telegram`) | bot token + chat id | nessuna lettura: invia briefing e avvisi critici se attivati; l'assistente può inviare messaggi solo con approvazione | — |
+
+I dati finiscono in `MarketingSnapshot` (un record per canale e giorno, con le sole metriche restituite dall'API) e `SocialPost`. Il ricavo GA4 è una misura di marketing e non sostituisce gli ordini.
+
+## Server MCP
+
+`POST /api/mcp` espone gli strumenti di lettura dell'assistente ad altri agenti (Claude Code, Claude Desktop su HTTPS). Token Bearer creati in Impostazioni, salvati come hash, con scadenza e revoca. Vedi `docs/AGENT.md`.

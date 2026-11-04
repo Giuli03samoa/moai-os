@@ -49,3 +49,24 @@ h1, h2, h3 {
 input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.6;
 }
+
+/* Markdown from the assistant and the briefing */
+.prose-moai h1, .prose-moai h2, .prose-moai h3 { font-weight: 500; margin: 1em 0 0.4em; }
+.prose-moai h1 { font-size: 1.15rem; }
+.prose-moai h2 { font-size: 1.02rem; }
+.prose-moai h3 { font-size: 0.95rem; }
+.prose-moai p { margin: 0.45em 0; }
+.prose-moai ul, .prose-moai ol { margin: 0.4em 0 0.4em 1.2em; }
+.prose-moai ul { list-style: disc; }
+.prose-moai ol { list-style: decimal; }
+.prose-moai li { margin: 0.15em 0; }
+.prose-moai strong { font-weight: 500; }
+.prose-moai code { font-family: var(--font-mono); font-size: 0.85em; background: var(--color-cloud); padding: 0 0.3em; border-radius: 4px; }
+.prose-moai pre { background: var(--color-blackout); color: var(--color-crocus); padding: 0.75rem; border-radius: 10px; overflow-x: auto; font-size: 0.8em; }
+.prose-moai pre code { background: transparent; padding: 0; color: inherit; }
+.prose-moai table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.85em; }
+.prose-moai th, .prose-moai td { border-bottom: 1px solid var(--color-smoke); padding: 0.35em 0.5em; text-align: left; }
+.prose-moai th { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-graphite); }
+.prose-moai a { text-decoration: underline; text-underline-offset: 3px; }
+.prose-moai blockquote { border-left: 3px solid var(--color-steel); padding-left: 0.75em; color: var(--color-graphite); }
+.prose-moai hr { border-color: var(--color-smoke); margin: 1em 0; }

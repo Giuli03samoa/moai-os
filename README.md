@@ -4,6 +4,10 @@ Piattaforma gestionale interna di **MOAI Athletics**. Non sostituisce Shopify, A
 
 > Principio non negoziabile: **nessuna operazione finanziaria o fiscale irreversibile è automatizzata.** MOAI OS legge, collega e segnala; le decisioni restano umane e tracciate.
 
+## 2.0 — l'assistente
+
+MOAI OS ha un assistente (Claude via API Anthropic) che legge tutto il gestionale con strumenti tipizzati, propone azioni, esegue quelle reversibili e chiede approvazione per le altre; un monitor che produce avvisi; un briefing giornaliero; il Design Studio per le grafiche dei capi (sketch SVG con brand check, mockup, tech pack); produzione, costi e marketing; un server MCP per Claude Code/Desktop. Per attivarlo: `ANTHROPIC_API_KEY` in `.env`. Dettagli in `docs/AGENT.md` e `docs/DESIGN_STUDIO.md`.
+
 ## Avvio rapido (sviluppo locale)
 
 Prerequisiti: Node.js ≥ 20.11 (testato con 24). PostgreSQL non serve installarlo: `npm run db:local` avvia un'istanza locale (PostgreSQL 17) nella cartella `.local/pg`.

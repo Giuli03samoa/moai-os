@@ -139,3 +139,25 @@ export async function deleteDemoDataAction() {
   revalidatePath("/");
   back(`Dati demo eliminati: ${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(", ")}.`);
 }
+
+/** Creates a read-only MCP token. The plain token is shown once in the redirect notice; only its hash is stored. */
+export async function createApiTokenAction(formData: FormData) {
+  const auth = await requireAuth("ADMIN");
+  const { randomToken, sha256Hex } = await import("../crypto");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 80) || "Token MCP";
+  const days = Math.min(365, Math.max(1, Number(formData.get("days") ?? 90) || 90));
+  const token = `moai_${randomToken(32)}`;
+  const t = await db.apiToken.create({ data: { organizationId: auth.organizationId, userId: auth.userId, name, tokenHash: sha256Hex(token), scopes: ["mcp:read"], expiresAt: new Date(Date.now() + days * 86_400_000) } });
+  await audit({ organizationId: auth.organizationId, userId: auth.userId, action: "api_token.create", entityType: "ApiToken", entityId: t.id, metadata: { name, days } });
+  revalidatePath("/settings");
+  redirect(`/settings?token=${encodeURIComponent(token)}&notice=${encodeURIComponent(`Token "${name}" creato: copialo ora, non verrà mostrato di nuovo.`)}`);
+}
+
+export async function revokeApiTokenAction(formData: FormData) {
+  const auth = await requireAuth("ADMIN");
+  const id = String(formData.get("id") ?? "");
+  await db.apiToken.updateMany({ where: { id, organizationId: auth.organizationId }, data: { revokedAt: new Date() } });
+  await audit({ organizationId: auth.organizationId, userId: auth.userId, action: "api_token.revoke", entityType: "ApiToken", entityId: id });
+  revalidatePath("/settings");
+  back("Token revocato.");
+}

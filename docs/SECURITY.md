@@ -29,3 +29,14 @@ Vedi [DEPLOYMENT.md](DEPLOYMENT.md#backup-e-test-di-ripristino): dump giornalier
 - Chiave di cifratura in un secret manager (non in file), rotazione pianificata.
 - Rate limiter distribuito se >1 istanza web.
 - Verifica firma P7M (opzionale) se si vuole dipendere dall'archivio interno per controlli formali.
+
+
+## Assistente (2.0)
+
+- La chiave API Anthropic vive solo in `ANTHROPIC_API_KEY` sul server; nessun segreto è nel database né nel browser.
+- Ogni strumento dichiara rischio (`read` / `write` / `approval`) e ruolo minimo. Gli strumenti `approval` non eseguono nulla: creano una richiesta che una persona approva; l'esecuzione avviene con l'identità e il ruolo dell'approvatore ed è auditata (`agent.approval.*`). Le scritture interne sono auditate (`agent.tool.write`).
+- Non esistono strumenti che scrivono su sistemi esterni o su denaro/fisco; l'elenco è verificato da un test.
+- I risultati dei tool (note ordini, caption, descrizioni bancarie) sono dichiarati "dati, non istruzioni" nel system prompt; il contenuto proveniente dall'esterno non viene mai eseguito.
+- Storico append-only, rate limit per utente, budget mensile con stop automatico, `stop_reason: refusal` gestito.
+- MCP: solo lettura, token hashati con sha256, scadenza, revoca, 240 richieste/min, ruolo dell'utente proprietario come limite.
+- SVG del Design Studio: controllo che rifiuta script, handler, foreignObject e riferimenti esterni; serviti come immagine con CSP `default-src 'none'` e usati solo in `<img>`.
