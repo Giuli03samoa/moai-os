@@ -38,7 +38,8 @@ export const arubaConnector: ConnectorDefinition = {
         const page = await client.findInvoices(dir, { size: 1, country: vat ? org?.countryCode ?? "IT" : undefined, vatcode: vat });
         return { ok: true as const, total: page.totalElements };
       } catch (e) {
-        if (e instanceof ConnectorError && (e.httpStatus === 401 || e.httpStatus === 403)) return { ok: false as const, blocked: true, message: e.message };
+        // HTTP 401/403, or HTTP 200 with errorCode 0093 ("Errore deleghe utente"): credentials are fine but web services are not enabled.
+        if (e instanceof ConnectorError && (e.httpStatus === 401 || e.httpStatus === 403 || /\[0093\]/.test(e.message))) return { ok: false as const, blocked: true, message: e.message };
         return { ok: false as const, blocked: false, message: (e as Error).message };
       }
     };
@@ -47,7 +48,7 @@ export const arubaConnector: ConnectorDefinition = {
     capabilities.outInvoices = out.ok ? `${out.total} documenti` : out.message;
     capabilities.inInvoices = inn.ok ? `${inn.total} documenti` : inn.message;
     if (!out.ok && !inn.ok && (out.blocked || inn.blocked)) {
-      return { status: "BLOCKED", message: "Credenziali valide ma web service non abilitati (serve Premium o delega)", blockedReason: "Account non Premium / senza delega", capabilities };
+      return { status: "BLOCKED", message: "Credenziali valide ma Aruba non abilita i web service per questo account (risposta 0093 o accesso negato): serve un account Premium o una delega. Nel frattempo carica gli XML/P7M in Fatture.", blockedReason: "Web service non abilitati: serve Premium o delega", capabilities };
     }
     if (!out.ok && !inn.ok) return { status: "ERROR", message: `Signin ok ma ricerca fallita: ${out.message}`, capabilities };
     return { status: "CONNECTED", message: `Connesso (${env}). Emesse: ${capabilities.outInvoices}; ricevute: ${capabilities.inInvoices}`, capabilities };
