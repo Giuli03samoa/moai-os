@@ -20,13 +20,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     db.productVariant.findMany({ where, orderBy: { [q.sort]: q.dir }, skip: q.skip, take: q.take, include: { product: true } }),
     db.productVariant.count({ where }),
     db.inventoryMovement.findMany({ where: { organizationId: auth.organizationId }, orderBy: { occurredAt: "desc" }, take: 8, include: { variant: { select: { sku: true, title: true, product: { select: { title: true } } } } } }),
-    db.productVariant.count({ where: { organizationId: auth.organizationId, deletedAt: null, inventoryQuantity: { lte: 3 }, product: { status: "ACTIVE" } } }),
+    db.productVariant.count({ where: { organizationId: auth.organizationId, deletedAt: null, inventoryTracked: true, inventoryQuantity: { lte: 3 }, product: { status: "ACTIVE" } } }),
   ]);
   return (
     <div>
-      <PageHeader title="Products" subtitle="Prodotti e varianti con giacenza per variante (snapshot Shopify). I movimenti sono le differenze rilevate tra due sincronizzazioni." />
+      <PageHeader title="Prodotti" subtitle="Prodotti e varianti con giacenza per variante (snapshot Shopify). «Non tracciata» vuol dire che Shopify non controlla le scorte. I movimenti sono le differenze rilevate tra due sincronizzazioni." />
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-        <Badge tone={lowStock ? "warn" : "ok"}>{lowStock} varianti attive con giacenza ≤ 3</Badge>
+        <Badge tone={lowStock ? "warn" : "ok"}>{lowStock} varianti tracciate con giacenza ≤ 3</Badge>
         {movements.length ? <span className="text-xs text-graphite">Ultimi movimenti: {movements.map((m) => `${m.variant.sku ?? m.variant.product.title} ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}`).join(" · ")}</span> : null}
       </div>
       <DataTable rows={rows} total={total} query={q} basePath="/products" rowKey={(r) => r.id} emptyTitle="Nessun prodotto: esegui la sincronizzazione prodotti da Integrations → Shopify" searchPlaceholder="SKU, nome, tipologia…"
@@ -37,7 +37,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           { key: "type", label: "Tipologia", render: (r) => <span className="text-xs text-graphite">{r.product.productType || "—"}</span> },
           { key: "status", label: "Stato", render: (r) => <Badge tone={r.product.status === "ACTIVE" ? "ok" : "muted"}>{r.product.status ?? "—"}</Badge> },
           { key: "price", label: "Prezzo", sortable: true, align: "right", render: (r) => fmtMoney(r.price.toString(), r.currency || auth.currency) },
-          { key: "inventoryQuantity", label: "Giacenza", sortable: true, align: "right", render: (r) => (r.inventoryQuantity === null ? <span className="text-graphite">n/t</span> : <span className={r.inventoryQuantity <= 3 ? "font-medium text-warn" : ""}>{r.inventoryQuantity}</span>) },
+          { key: "inventoryQuantity", label: "Giacenza", sortable: true, align: "right", render: (r) => (r.inventoryQuantity === null || r.inventoryTracked === false ? <span className="text-graphite" title="Shopify non traccia le scorte di questa variante: la quantità non indica un esaurimento">non tracciata</span> : <span className={r.inventoryQuantity <= 3 ? "font-medium text-warn" : ""}>{r.inventoryQuantity}</span>) },
           { key: "source", label: "Origine", render: (r) => <SourceTag source={r.source} updatedAt={r.syncedAt} demo={r.isDemo} /> },
         ]} />
     </div>

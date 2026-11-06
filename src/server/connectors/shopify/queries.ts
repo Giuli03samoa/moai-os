@@ -96,7 +96,7 @@ export const PRODUCTS = /* GraphQL */ `
       pageInfo { hasNextPage endCursor }
       nodes {
         id title handle status vendor productType updatedAt
-        variants(first: 100) { nodes { id sku title price inventoryQuantity updatedAt } }
+        variants(first: 100) { nodes { id sku title price inventoryQuantity updatedAt inventoryItem { tracked } } }
       }
     }
   }
@@ -104,7 +104,7 @@ export const PRODUCTS = /* GraphQL */ `
 
 export type ProductNode = {
   id: string; title: string; handle: string; status: string; vendor: string; productType: string; updatedAt: string;
-  variants: { nodes: Array<{ id: string; sku: string | null; title: string; price: string; inventoryQuantity: number | null; updatedAt: string }> };
+  variants: { nodes: Array<{ id: string; sku: string | null; title: string; price: string; inventoryQuantity: number | null; updatedAt: string; inventoryItem?: { tracked: boolean } | null }> };
 };
 export type ProductsResponse = { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: ProductNode[] } };
 

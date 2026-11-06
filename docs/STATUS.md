@@ -4,7 +4,7 @@
 
 | Componente | Stato | Nota |
 |---|---|---|
-| Motore agente (Claude, tool tipizzati, streaming SSE, storico append-only, costi) | ✅ codice · ⏳ collaudo | Verificato senza chiave API: UI, approvazioni, monitor, briefing a regole. La prima conversazione reale richiede `ANTHROPIC_API_KEY`. |
+| Motore agente (Claude, tool tipizzati, streaming SSE, storico append-only, costi) | ✅ | Collaudato il 6/11/2026 con il modello reale: due turni con 7 strumenti e memoria della conversazione, parametri beta accettati, 0,28 USD. Da collaudare con il modello: approvazioni e strumenti di scrittura. |
 | 25 strumenti di lettura, 14 di scrittura interna, 5 con approvazione umana | ✅ | Nessuno scrive su Shopify/Aruba/Packlink/gateway/SdI. Test sul registro. |
 | Approvazioni umane (AgentApproval) con esecuzione a nome dell'approvatore e audit | ✅ | Scadenza 7 giorni. |
 | Monitor avvisi (15 regole deterministiche, dedupe, auto-risoluzione) | ✅ | Job `agent.monitor` ogni 15 min; regole testate. |
@@ -16,7 +16,7 @@
 | Email SMTP e Telegram (briefing e avvisi critici in uscita, messaggi dell'agente con approvazione) | ✅ codice · ✗ collaudo | Scelta di Giulio: email. Da configurare con una password per le app. |
 | Legalmail: fatture da PEC via IMAP in sola lettura | ✅ codice · ⏳ collaudo reale | Testato con messaggi PEC simulati e casella finta; da collaudare sulla casella reale. Aruba disattivato: API non abilitate (errore 0093). |
 | Server MCP (`/api/mcp`, solo lettura, token hashati) | ✅ | Test JSON-RPC; da provare con Claude Code. |
-| Test | ✅ | 83 unitari e 10 di integrazione verdi; build di produzione ok. |
+| Test | ✅ | 85 unitari e 11 di integrazione verdi. |
 
 ## MVP v1.0 — Definition of Done
 

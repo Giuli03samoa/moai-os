@@ -81,6 +81,6 @@ Claude Desktop accetta connettori remoti solo su HTTPS: va usato quando MOAI OS 
 | `AGENT_MONTHLY_BUDGET_USD` | 60 | tetto mensile |
 | `LOW_STOCK_THRESHOLD` | 3 | soglia scorte per il monitor |
 
-## Non collaudato
+## Collaudo
 
-Il motore è stato verificato in locale senza chiave API (configurazione, UI, approvazioni, monitor, briefing a regole). La prima conversazione reale con il modello va fatta con una chiave valida: in quel momento vanno controllati accettazione dei parametri beta (fallback, compaction) e i costi effettivi per turno.
+Il 6 novembre 2026 una conversazione reale di due turni ha usato 7 strumenti di lettura e ha ricordato il contesto; compaction, fallback e prompt cache sono stati accettati. Costo: 0,25 USD per il primo turno, in gran parte scrittura della cache, e 0,03 USD per il successivo. Restano da provare con il modello le approvazioni, gli strumenti di scrittura e gli sketch del Design Studio.

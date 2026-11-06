@@ -93,9 +93,12 @@ export async function syncShopifyProducts(ctx: JobContext) {
   const client = new ShopifyClient(loaded, ctx.log);
   const cursors = (loaded.connection.cursors as Record<string, string>) ?? {};
   const payload = ctx.payload as { full?: boolean; after?: string | null };
-  const filter = !payload.full && cursors.productsUpdatedAt ? `updated_at:>='${cursors.productsUpdatedAt}'` : undefined;
+  // Incremental by updated_at, plus one complete pass a day: stock or settings can change without the product date moving.
+  const fullDue = !cursors.productsFullAt || Date.now() - Date.parse(cursors.productsFullAt) > 24 * 3_600_000;
+  const filter = !payload.full && !fullDue && cursors.productsUpdatedAt ? `updated_at:>='${cursors.productsUpdatedAt}'` : undefined;
   let after: string | null = payload.after ?? null;
   let pages = 0, products = 0, variants = 0;
+  let finished = false;
   let lastUpdatedAt: string | null = null;
   for (;;) {
     const res: ProductsResponse = await client.query<ProductsResponse>(PRODUCTS, { first: 8, after, query: filter });
@@ -108,13 +111,17 @@ export async function syncShopifyProducts(ctx: JobContext) {
     }
     if (lastUpdatedAt) await patchCursors(loaded.connection.id, { productsUpdatedAt: isoMinus(lastUpdatedAt, OVERLAP_MS) });
     await ctx.checkpoint({ pages, products, variants });
-    if (!res.products.pageInfo.hasNextPage) break;
+    if (!res.products.pageInfo.hasNextPage) {
+      finished = true;
+      break;
+    }
     after = res.products.pageInfo.endCursor;
     if (pages >= MAX_PAGES_PER_JOB) {
       await ctx.continueWith({ ...payload, after });
       break;
     }
   }
+  if (finished && !filter) await patchCursors(loaded.connection.id, { productsFullAt: new Date().toISOString() });
   // Variants synced after an order may now be linkable.
   await db.$executeRaw`
     UPDATE "OrderItem" oi SET "variantId" = pv.id

@@ -210,19 +210,39 @@ export const listShipments = defineTool({
 
 export const listProducts = defineTool({
   name: "list_products",
-  description: "Catalogo con varianti, prezzo e giacenza. lowStockThreshold restituisce solo le varianti con giacenza ≤ soglia.",
+  description: "Catalogo: riepilogo di TUTTI i prodotti (varianti, scorte totali, se le scorte sono tracciate) più un elenco di varianti con prezzo e giacenza. Se tracked è false lo store non traccia le scorte: la quantità non significa esaurito. lowStockThreshold considera solo le varianti tracciate.",
   schema: z.object({ query: z.string().max(80).optional(), lowStockThreshold: z.number().int().min(0).max(1000).optional(), limit: LIMIT }),
   risk: "read",
   minRole: "VIEWER",
   summarize: (i) => `Prodotti ${i.query ?? ""} ${i.lowStockThreshold !== undefined ? `scorte ≤ ${i.lowStockThreshold}` : ""}`.trim(),
   async run(ctx, input) {
-    const variants = await db.productVariant.findMany({
-      where: { organizationId: ctx.organizationId, deletedAt: null, product: { deletedAt: null }, ...(input.lowStockThreshold !== undefined ? { inventoryQuantity: { lte: input.lowStockThreshold } } : {}), ...(input.query ? { OR: [{ sku: { contains: input.query, mode: "insensitive" } }, { title: { contains: input.query, mode: "insensitive" } }, { product: { title: { contains: input.query, mode: "insensitive" } } }] } : {}) },
-      orderBy: [{ inventoryQuantity: "asc" }, { sku: "asc" }], take: lim(input.limit) * 2,
-      include: { product: { select: { title: true, productType: true, status: true, handle: true } } },
+    const where: Prisma.ProductVariantWhereInput = { organizationId: ctx.organizationId, deletedAt: null, product: { deletedAt: null }, ...(input.lowStockThreshold !== undefined ? { inventoryTracked: true, inventoryQuantity: { lte: input.lowStockThreshold } } : {}), ...(input.query ? { OR: [{ sku: { contains: input.query, mode: "insensitive" } }, { title: { contains: input.query, mode: "insensitive" } }, { product: { title: { contains: input.query, mode: "insensitive" } } }] } : {}) };
+    const take = lim(input.limit) * 2;
+    const [variants, total, all] = await Promise.all([
+      db.productVariant.findMany({ where, orderBy: [{ inventoryQuantity: "asc" }, { sku: "asc" }], take, include: { product: { select: { title: true, productType: true, status: true, handle: true } } } }),
+      db.productVariant.count({ where }),
+      db.productVariant.findMany({ where: { organizationId: ctx.organizationId, deletedAt: null, product: { deletedAt: null } }, select: { inventoryQuantity: true, inventoryTracked: true, syncedAt: true, product: { select: { title: true, status: true } } } }),
+    ]);
+    const byProduct = new Map<string, { product: string; status: string | null; variants: number; trackedVariants: number; stockOfTrackedVariants: number; trackedVariantsAtZero: number; checkedAt: Date }>();
+    for (const v of all) {
+      const e = byProduct.get(v.product.title) ?? { product: v.product.title, status: v.product.status, variants: 0, trackedVariants: 0, stockOfTrackedVariants: 0, trackedVariantsAtZero: 0, checkedAt: v.syncedAt };
+      e.variants++;
+      if (v.inventoryTracked) {
+        e.trackedVariants++;
+        e.stockOfTrackedVariants += v.inventoryQuantity ?? 0;
+        if ((v.inventoryQuantity ?? 0) <= 0) e.trackedVariantsAtZero++;
+      }
+      if (v.syncedAt > e.checkedAt) e.checkedAt = v.syncedAt;
+      byProduct.set(v.product.title, e);
+    }
+    return plain({
+      productsTotal: byProduct.size,
+      summary: [...byProduct.values()],
+      variantsMatching: total,
+      variantsShown: variants.length,
+      note: "tracked=false: lo store non controlla le scorte di quella variante, quindi inventory non indica disponibilità né esaurimento. checkedAt/syncedAt è l'ultima lettura da Shopify.",
+      variants: variants.map((v) => ({ id: v.id, product: v.product.title, type: v.product.productType, productStatus: v.product.status, variant: v.title, sku: v.sku, price: v.price, currency: v.currency, inventory: v.inventoryTracked === false ? null : v.inventoryQuantity, tracked: v.inventoryTracked, source: v.source, syncedAt: v.syncedAt, isDemo: v.isDemo })),
     });
-    const products = await db.product.count({ where: { organizationId: ctx.organizationId, deletedAt: null } });
-    return plain({ productsTotal: products, variants: variants.map((v) => ({ id: v.id, product: v.product.title, type: v.product.productType, productStatus: v.product.status, variant: v.title, sku: v.sku, price: v.price, currency: v.currency, inventory: v.inventoryQuantity, source: v.source, syncedAt: v.syncedAt, isDemo: v.isDemo })) });
   },
 });
 

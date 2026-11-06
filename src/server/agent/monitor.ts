@@ -82,7 +82,7 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     db.invoice.findMany({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentStatus: { in: ["UNPAID", "PARTIAL", "UNKNOWN"] }, nextDueDate: { lt: now } }, select: { number: true, senderName: true, nextDueDate: true, totalAmount: true }, take: 50 }),
     db.syncJob.count({ where: { organizationId, status: "DEAD" } }),
     db.integrationConnection.findMany({ where: { organizationId } }),
-    db.productVariant.findMany({ where: { organizationId, deletedAt: null, isDemo: false, inventoryQuantity: { not: null, lte: lowStockThreshold }, product: { deletedAt: null, status: { in: ["ACTIVE", "active"] } } }, select: { sku: true, title: true, inventoryQuantity: true, product: { select: { title: true } } }, take: 100 }),
+    db.productVariant.findMany({ where: { organizationId, deletedAt: null, isDemo: false, inventoryTracked: true, inventoryQuantity: { not: null, lte: lowStockThreshold }, product: { deletedAt: null, status: { in: ["ACTIVE", "active"] } } }, select: { sku: true, title: true, inventoryQuantity: true, product: { select: { title: true } } }, take: 100 }),
     db.productionOrder.findMany({ where: { organizationId, status: { in: ["ORDERED", "IN_PRODUCTION", "SHIPPED"] }, expectedAt: { lt: now } }, include: { supplier: { select: { name: true } } }, take: 20 }),
     db.task.count({ where: { organizationId, status: { in: ["OPEN", "IN_PROGRESS"] }, dueAt: { lt: now } } }),
     db.agentApproval.count({ where: { organizationId, status: "PENDING" } }),

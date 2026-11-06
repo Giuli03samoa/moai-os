@@ -468,6 +468,7 @@ model ProductVariant {
   price             Decimal             @db.Decimal(18, 4)
   currency          String
   inventoryQuantity Int?
+  inventoryTracked  Boolean? // false = the store does not track stock: the quantity means nothing
   sourceUpdatedAt   DateTime?
   syncedAt          DateTime            @default(now())
   isDemo            Boolean             @default(false)

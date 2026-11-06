@@ -208,8 +208,8 @@ export async function upsertProduct(organizationId: string, p: ProductNode, opts
     const existing = await db.productVariant.findUnique({ where: { organizationId_source_externalId: { organizationId, source: "SHOPIFY", externalId: v.id } } });
     const variant = await db.productVariant.upsert({
       where: { organizationId_source_externalId: { organizationId, source: "SHOPIFY", externalId: v.id } },
-      create: { organizationId, productId: product.id, source: "SHOPIFY", externalId: v.id, sku: v.sku, title: v.title, price: D(v.price), currency: "", inventoryQuantity: v.inventoryQuantity, sourceUpdatedAt: new Date(v.updatedAt), isDemo: opts.isDemo ?? false },
-      update: { productId: product.id, sku: v.sku, title: v.title, price: D(v.price), inventoryQuantity: v.inventoryQuantity, sourceUpdatedAt: new Date(v.updatedAt), syncedAt: new Date(), deletedAt: null },
+      create: { organizationId, productId: product.id, source: "SHOPIFY", externalId: v.id, sku: v.sku, title: v.title, price: D(v.price), currency: "", inventoryQuantity: v.inventoryQuantity, inventoryTracked: v.inventoryItem?.tracked ?? null, sourceUpdatedAt: new Date(v.updatedAt), isDemo: opts.isDemo ?? false },
+      update: { productId: product.id, sku: v.sku, title: v.title, price: D(v.price), inventoryQuantity: v.inventoryQuantity, inventoryTracked: v.inventoryItem?.tracked ?? null, sourceUpdatedAt: new Date(v.updatedAt), syncedAt: new Date(), deletedAt: null },
     });
     keep.push(variant.id);
     // Inventory is tracked as snapshots: a change between two syncs becomes a movement.
