@@ -1,5 +1,5 @@
 import type { ConnectorDefinition, VerifyResult } from "../types";
-import { smtpSettings, transporterFor } from "../../notify/email";
+import { isValidSmtpHost, smtpSettings, transporterFor } from "../../notify/email";
 
 /** SMTP email, outbound only: morning briefing, critical alerts, messages the agent is approved to send. */
 export const emailConnector: ConnectorDefinition = {
@@ -9,7 +9,7 @@ export const emailConnector: ConnectorDefinition = {
   description: "Briefing del mattino e avvisi critici nella tua casella di posta, tramite SMTP (Gmail, iCloud, Aruba, Fastmail…).",
   secretFields: [{ name: "smtpPassword", label: "Password SMTP", type: "password", required: true, help: "Gmail: Account Google → Sicurezza → Password per le app (serve la verifica in due passaggi). Mai la password normale dell'account." }],
   configFields: [
-    { name: "smtpHost", label: "Server SMTP", type: "text", required: true, placeholder: "smtp.gmail.com" },
+    { name: "smtpHost", label: "Server SMTP", type: "text", required: true, placeholder: "smtp.gmail.com", help: "L'indirizzo del server, non la password. Per Gmail: smtp.gmail.com" },
     { name: "smtpPort", label: "Porta", type: "text", placeholder: "465", help: "465 (SSL) o 587 (STARTTLS)" },
     { name: "smtpUser", label: "Utente SMTP (indirizzo)", type: "text", required: true, placeholder: "tu@gmail.com" },
     { name: "from", label: "Mittente", type: "text", placeholder: "MOAI OS <tu@gmail.com>", help: "Vuoto = l'utente SMTP" },
@@ -26,6 +26,8 @@ export const emailConnector: ConnectorDefinition = {
   async verify(ctx): Promise<VerifyResult> {
     const s = smtpSettings(ctx.secrets, ctx.config);
     if (!s) return { status: "NOT_CONFIGURED", message: "Compila server, utente, password e destinatario" };
+    // Checked first and never echoed: a password pasted in the wrong field must not end up in logs or URLs.
+    if (!isValidSmtpHost(s.host)) return { status: "ERROR", message: "Il campo Server SMTP non contiene un indirizzo valido: per Gmail scrivi smtp.gmail.com. La password va solo nel campo Password SMTP." };
     try {
       await transporterFor(s).verify();
     } catch (e) {

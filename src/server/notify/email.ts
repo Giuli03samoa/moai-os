@@ -17,6 +17,11 @@ export function smtpSettings(secrets: Record<string, string>, config: Record<str
   return { host, port, secure: config.secure === undefined ? port === 465 : config.secure === true, user, pass: secrets.smtpPassword, from: String(config.from ?? "").trim() || user, to };
 }
 
+/** A host name has no spaces and contains a dot. A value like a pasted password must never reach DNS or error messages. */
+export function isValidSmtpHost(host: string): boolean {
+  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
+}
+
 export function transporterFor(s: SmtpSettings) {
   return nodemailer.createTransport({ host: s.host, port: s.port, secure: s.secure, auth: { user: s.user, pass: s.pass }, connectionTimeout: 15_000 });
 }
