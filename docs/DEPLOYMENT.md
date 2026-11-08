@@ -61,3 +61,33 @@ Primo avvio: aprire `/setup` **subito** (si disattiva dopo il primo utente) oppu
 2. `npx prisma migrate deploy` (le migrazioni sono additive; verificare il changelog).
 3. Riavvio web e worker (i job `RUNNING` interrotti vengono rilasciati dopo 30 minuti e ritentati).
 4. Shopify: controllare ogni trimestre la versione API (`SHOPIFY_API_VERSION`) e la versione webhook nell'app.
+
+
+## Sul Mac di Giulio: servizio sempre attivo e backup (dal 8/11/2026)
+
+Il progetto vive in `~/MOAI OS/moai-os`; sulla Scrivania c'è un collegamento con lo stesso nome. I servizi di macOS non possono leggere la Scrivania, per questo il progetto non sta lì.
+
+Tre agenti launchd per l'utente, senza permessi di amministratore:
+
+| Servizio | Etichetta | Cosa fa |
+|---|---|---|
+| Database | `it.moaiathletics.os.db` | PostgreSQL locale all'accensione; riparte se si blocca |
+| App | `it.moaiathletics.os.app` | build di produzione se il codice è cambiato, migrazioni, poi `next start` su `localhost:3000` con il worker dei job |
+| Backup | `it.moaiathletics.os.backup` | ogni giorno alle 13:00 (o al risveglio): ferma il database per pochi secondi, archivia `.local/pg`, `storage` e `.env`, cifra con AES-256-GCM e salva in iCloud Drive → `MOAI OS Backup`, tenendo gli ultimi 30 |
+
+```bash
+npm run service:install
+npm run service:status
+npm run service:restart
+npm run service:uninstall
+npm run backup:now
+npm run backup:verify -- "<file.moaibak>"
+npm run backup:extract -- "<file.moaibak>" "<cartella vuota>"
+```
+
+- La password dei backup sta nel Portachiavi (servizio `it.moaiathletics.os.backup`) e va conservata anche altrove: senza, i backup non si aprono.
+- Log in `~/Library/Logs/MOAI OS/`. Il monitor avvisa se l'ultimo backup ha più di 48 ore.
+- Il cookie di sessione è `Secure` solo se `APP_URL` è in https, così la build di produzione funziona su `http://localhost`.
+- Se cambi versione di Node con nvm, rilancia `npm run service:install`.
+- Ripristino completo: `npm run service:uninstall`, estrai il backup in una cartella vuota, sostituisci `.local/pg` (e se serve `.env`, `storage`), poi `npm run service:install`.
+- Per sviluppare con `npm run dev` ferma prima l'app (`launchctl bootout gui/$(id -u)/it.moaiathletics.os.app`), perché usa la stessa porta 3000.

@@ -32,6 +32,7 @@ export type MonitorSnapshot = {
   pendingApprovals: number;
   ordersLast7d: number;
   ordersPrev28d: number;
+  lastBackupAt: Date | null;
 };
 
 const DAY = 86_400_000;
@@ -65,6 +66,7 @@ export function computeAlerts(s: MonitorSnapshot): AlertCandidate[] {
   if (s.lateProduction.length) out.push({ dedupeKey: "production.late", kind: "production.late", severity: "WARNING", title: `${s.lateProduction.length} ordini di produzione oltre la data attesa`, body: s.lateProduction.slice(0, 5).map((p) => `${p.reference}${p.supplier ? ` (${p.supplier})` : ""} atteso il ${p.expectedAt.toISOString().slice(0, 10)}`).join("; "), href: "/production" });
   if (s.overdueTasks) out.push({ dedupeKey: "tasks.overdue", kind: "tasks.overdue", severity: "INFO", title: `${s.overdueTasks} task oltre la scadenza`, body: "Riprogramma o chiudi i task scaduti.", href: "/tasks?filter=overdue" });
   if (s.pendingApprovals) out.push({ dedupeKey: "agent.approvals", kind: "agent.approvals", severity: "INFO", title: `${s.pendingApprovals} proposte dell'assistente in attesa di approvazione`, body: "Approva o rifiuta in Assistente → Approvazioni.", href: "/assistant/approvals" });
+  if (s.lastBackupAt && s.now.getTime() - s.lastBackupAt.getTime() > 48 * 3_600_000) out.push({ dedupeKey: "backup.stale", kind: "backup.stale", severity: "WARNING", title: `Ultimo backup ${Math.floor((s.now.getTime() - s.lastBackupAt.getTime()) / 86_400_000)} giorni fa`, body: "Il backup giornaliero non sta funzionando. Controlla ~/Library/Logs/MOAI OS/backup.log oppure esegui npm run backup:now.", href: "/settings" });
   if (s.ordersLast7d === 0 && s.ordersPrev28d >= 8) out.push({ dedupeKey: "sales.no_orders_7d", kind: "sales.no_orders_7d", severity: "WARNING", title: "Nessun ordine negli ultimi 7 giorni", body: `Nei 28 giorni precedenti ce n'erano ${s.ordersPrev28d}. Controlla negozio, campagne e che la sync Shopify funzioni.`, href: "/orders" });
   return out;
 }
@@ -90,6 +92,7 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     db.order.count({ where: { organizationId, deletedAt: null, test: false, cancelledAt: null, isDemo: false, processedAt: { gte: new Date(now.getTime() - 35 * DAY), lt: new Date(now.getTime() - 7 * DAY) } } }),
     monthSpendUsd(organizationId),
   ]);
+  const lastBackup = await db.auditLog.findFirst({ where: { action: "backup.created" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
   const { getConnector } = await import("../connectors/registry");
   return {
     now,
@@ -116,6 +119,7 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     pendingApprovals,
     ordersLast7d,
     ordersPrev28d,
+    lastBackupAt: lastBackup?.createdAt ?? null,
   };
 }
 

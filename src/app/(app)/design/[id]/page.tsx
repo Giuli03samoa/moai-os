@@ -100,7 +100,7 @@ export default async function DesignProjectPage({ params, searchParams }: { para
               <Card>
                 <CardHeader><CardTitle>Carica un riferimento</CardTitle><CardDescription>PNG, JPEG, WebP, GIF o PDF (max 10 MB), in archivio privato.</CardDescription></CardHeader>
                 <CardContent>
-                  <form action={uploadReferenceAction} className="flex flex-col gap-3" encType="multipart/form-data">
+                  <form action={uploadReferenceAction} className="flex flex-col gap-3">
                     <input type="hidden" name="projectId" value={p.id} />
                     <Field label="Titolo"><Input name="title" placeholder="Moodboard, foto campione, tech pack…" /></Field>
                     <Field label="Tipo"><Select name="kind" defaultValue="REFERENCE"><option value="REFERENCE">Riferimento</option><option value="TECHPACK">Tech pack</option></Select></Field>

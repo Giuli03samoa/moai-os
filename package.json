@@ -21,7 +21,14 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "service:install": "tsx scripts/service/install.ts",
+    "service:uninstall": "tsx scripts/service/install.ts --uninstall",
+    "service:status": "tsx scripts/service/status.ts",
+    "service:restart": "launchctl kickstart -k gui/$(id -u)/it.moaiathletics.os.app",
+    "backup:now": "tsx scripts/backup.ts",
+    "backup:verify": "tsx scripts/restore-backup.ts --verify",
+    "backup:extract": "tsx scripts/restore-backup.ts --extract"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

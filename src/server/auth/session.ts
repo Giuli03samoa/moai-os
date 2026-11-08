@@ -31,7 +31,8 @@ export async function createSession(userId: string, organizationId: string) {
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Secure whenever the app is served over HTTPS. A local production build on http://localhost keeps working.
+    secure: (process.env.APP_URL ?? "").startsWith("https://"),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,

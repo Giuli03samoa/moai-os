@@ -4,7 +4,7 @@ import { computeAlerts, type MonitorSnapshot } from "@/server/agent/monitor";
 const now = new Date("2026-11-04T10:00:00Z");
 const base: MonitorSnapshot = {
   now, currency: "EUR", lateUnfulfilled: [], problemShipments: 0, unreconciledOldTx: 0, suggestedReconciliations: 0, invoicesDueSoon: [], invoicesOverdue: [], deadJobs: 0,
-  connections: [], lowStock: [], lowStockThreshold: 3, budget: { spentUsd: 0, budgetUsd: 60 }, lateProduction: [], overdueTasks: 0, pendingApprovals: 0, ordersLast7d: 3, ordersPrev28d: 10,
+  connections: [], lowStock: [], lowStockThreshold: 3, budget: { spentUsd: 0, budgetUsd: 60 }, lateProduction: [], overdueTasks: 0, pendingApprovals: 0, ordersLast7d: 3, ordersPrev28d: 10, lastBackupAt: null,
 };
 
 describe("monitor rules", () => {
@@ -40,6 +40,11 @@ describe("monitor rules", () => {
   it("warns on zero orders in a week only with real history", () => {
     expect(computeAlerts({ ...base, ordersLast7d: 0, ordersPrev28d: 2 })).toEqual([]);
     expect(computeAlerts({ ...base, ordersLast7d: 0, ordersPrev28d: 12 })[0]?.kind).toBe("sales.no_orders_7d");
+  });
+  it("warns when the daily backup stops, never before the first one", () => {
+    expect(computeAlerts({ ...base, lastBackupAt: null })).toEqual([]);
+    expect(computeAlerts({ ...base, lastBackupAt: new Date(now.getTime() - 30 * 3_600_000) })).toEqual([]);
+    expect(computeAlerts({ ...base, lastBackupAt: new Date(now.getTime() - 3 * 86_400_000) })[0]?.kind).toBe("backup.stale");
   });
   it("low stock is WARNING when something is sold out", () => {
     expect(computeAlerts({ ...base, lowStock: [{ sku: "A", title: "A", qty: 2 }] })[0]?.severity).toBe("INFO");
