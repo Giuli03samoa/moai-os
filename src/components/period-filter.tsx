@@ -15,7 +15,7 @@ export function PeriodFilter({ basePath, current, from, to, tz, extra }: { baseP
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex flex-wrap gap-1 rounded-full bg-cloud p-1">
         {PERIODS.map((p) => (
-          <Link key={p.key} href={qs(p.key)} className={cn("rounded-full px-3 py-1 text-xs transition-colors", current === p.key ? "bg-blackout text-crocus" : "text-graphite hover:text-blackout")}>
+          <Link key={p.key} href={qs(p.key)} className={cn("rounded-full px-3 py-1 text-xs transition-colors", current === p.key ? "bg-white text-blackout shadow-sm" : "text-graphite hover:text-blackout")}>
             {p.label}
           </Link>
         ))}
@@ -23,9 +23,9 @@ export function PeriodFilter({ basePath, current, from, to, tz, extra }: { baseP
       <form action={basePath} className="flex flex-wrap items-center gap-1">
         {Object.entries(extra ?? {}).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
         <input type="hidden" name="period" value="custom" />
-        <Input type="date" name="from" defaultValue={toInputDate(from, tz)} className="h-8 w-[140px] text-xs" />
+        <Input type="date" name="from" defaultValue={toInputDate(from, tz)} className="h-8 w-[140px] rounded-full text-xs" />
         <span className="text-xs text-graphite">→</span>
-        <Input type="date" name="to" defaultValue={toInputDate(to, tz)} className="h-8 w-[140px] text-xs" />
+        <Input type="date" name="to" defaultValue={toInputDate(to, tz)} className="h-8 w-[140px] rounded-full text-xs" />
         <Button type="submit" variant="outline" size="sm">Applica</Button>
       </form>
     </div>

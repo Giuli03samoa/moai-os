@@ -93,7 +93,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>Assistente</CardTitle><CardDescription>Modello {agentModel()} · effort {agentEffort()} · budget mensile {agentMonthlyBudgetUsd()} USD (AGENT_MODEL, AGENT_EFFORT, AGENT_MONTHLY_BUDGET_USD nel file .env). La chiave API resta solo sul server.</CardDescription></CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr]">
+          <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_1fr]">
             <div className="text-sm">
               <p className="flex items-center gap-2">Stato: {isAgentConfigured() ? <Badge tone="ok">configurato</Badge> : <Badge tone="warn">ANTHROPIC_API_KEY mancante</Badge>}</p>
               <p className="mt-2">Speso questo mese: <strong className="tabular">{spent.toFixed(2)} USD</strong> su {agentMonthlyBudgetUsd()}.</p>

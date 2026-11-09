@@ -36,7 +36,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader
-        title="Payments"
+        title="Pagamenti"
         subtitle="Due ledger distinti: cosa ha registrato il negozio e cosa dice il gateway. La riconciliazione li collega senza mai sommare lo stesso denaro due volte."
         actions={
           <>

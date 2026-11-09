@@ -30,7 +30,7 @@ export default async function SyncPage({ searchParams }: { searchParams: Promise
   const workerAlive = health?.finishedAt && Date.now() - health.finishedAt.getTime() < 2 * Number(process.env.WORKER_SCHEDULE_MINUTES ?? 15) * 60_000;
   return (
     <div>
-      <PageHeader title="Sync" subtitle="Coda persistente dei job: ogni sincronizzazione, errore e tentativo è visibile e recuperabile. I job falliti riprovano con backoff; quelli morti richiedono intervento."
+      <PageHeader title="Sincronizzazioni" subtitle="Coda persistente dei job: ogni sincronizzazione, errore e tentativo è visibile e recuperabile. I job falliti riprovano con backoff; quelli morti richiedono intervento."
         actions={canRun ? <><form action={scheduleNowAction}><Button type="submit" variant="outline" size="sm">Pianifica ora</Button></form><form action={runJobAction}><input type="hidden" name="type" value="reconciliation.run" /><input type="hidden" name="returnTo" value="/sync" /><Button type="submit" variant="outline" size="sm">Riconcilia</Button></form><form action={runJobAction}><input type="hidden" name="type" value="shipments.detect_problems" /><input type="hidden" name="returnTo" value="/sync" /><Button type="submit" variant="outline" size="sm">Controlla spedizioni</Button></form></> : null} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}

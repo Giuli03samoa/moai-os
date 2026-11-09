@@ -25,7 +25,7 @@ export function ImportForm({ presets, fields, initialKind, tz }: { presets: Pres
   };
 
   return (
-    <form action={action} className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+    <form action={action} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1.2fr]">
       <Card>
         <CardHeader><CardTitle>1 · File e mapping</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-4">

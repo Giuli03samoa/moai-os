@@ -36,7 +36,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   return (
     <div>
       <PageHeader
-        title="Orders"
+        title="Ordini"
         subtitle="Ordini Shopify con stato pagamento ed evasione. Fonte: Shopify GraphQL Admin API."
         actions={
           <>

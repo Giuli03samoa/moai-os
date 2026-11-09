@@ -20,7 +20,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
       <PageHeader title="Design Studio" subtitle="Grafiche per capi, capsule e drop nel sistema MOAI: concept, direzioni, sketch SVG con brand check, mockup sul capo, brief per lo stampatore." actions={<form action={newConversationAction}><input type="hidden" name="prompt" value="Carica le skill design-direction e brand-guide. Voglio lavorare su una nuova grafica: chiedimi il concept del drop con una sola domanda, poi proponi 3 direzioni." /><Button type="submit" size="sm">Lavora con l&apos;assistente</Button></form>} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex flex-col gap-4">
           <div className="flex gap-1"><Link href="/design" className={`rounded-full px-3 py-1 text-xs ${sp.stage !== "ARCHIVED" ? "bg-blackout text-crocus" : "bg-cloud text-graphite"}`}>Attivi</Link><Link href="/design?stage=ARCHIVED" className={`rounded-full px-3 py-1 text-xs ${sp.stage === "ARCHIVED" ? "bg-blackout text-crocus" : "bg-cloud text-graphite"}`}>Archiviati</Link></div>
           {projects.length === 0 ? <Card><CardContent className="py-12 text-center text-sm text-graphite">Nessun progetto. Crea il primo a destra o chiedi all&apos;assistente di proporre direzioni per il prossimo drop.</CardContent></Card> : null}
@@ -32,7 +32,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
                 <Link key={p.id} href={`/design/${p.id}`} className="block transition-transform hover:-translate-y-px">
                   <Card className="h-full overflow-hidden">
                     <div className="flex h-40 items-center justify-center bg-cloud">
-                      {preview ? <img src={`/api/design/assets/${preview.id}`} alt="" className="max-h-40 w-full object-contain" /> : <Image src="/brand/moai-icon-black.png" alt="" width={120} height={57} className="opacity-20" />}
+                      {preview ? <img src={`/api/design/assets/${preview.id}`} alt="" className="max-h-40 w-full object-contain" /> : <Image src="/brand/moai-icon-black.png" alt="" width={120} height={57} className="opacity-20 dark:invert" />}
                     </div>
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-2"><p className="font-medium">{p.name}</p><Badge tone={st.tone}>{st.label}</Badge></div>
@@ -67,7 +67,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
             <CardContent className="flex flex-col gap-3 text-xs">
               <div className="flex flex-wrap gap-1.5">{[...PALETTE.primary, ...PALETTE.secondary].map((c) => <span key={c.hex} className="inline-flex items-center gap-1 rounded-full border border-smoke px-2 py-0.5" title={c.hex}><span className="inline-block h-3 w-3 rounded-full border border-smoke" style={{ background: c.hex }} />{c.name}</span>)}</div>
               <p className="text-graphite">Font {TYPOGRAPHY.family} ({TYPOGRAPHY.weights.join("/")}). Pattern chevron come dettaglio. Logo: mai gradienti, rotazioni, opacità, contorni.</p>
-              <div className="flex items-center gap-3 rounded-lg bg-blackout p-3"><Image src="/brand/moai-logo-secondary-cream.png" alt="Logo secondario" width={120} height={40} className="h-auto w-[120px]" /><Image src="/brand/moai-icon-cream.png" alt="Icona" width={60} height={28} className="h-auto w-[60px]" /></div>
+              <div className="flex items-center gap-3 rounded-xl bg-ink p-3"><Image src="/brand/moai-logo-secondary-cream.png" alt="Logo secondario" width={120} height={40} className="h-auto w-[120px]" /><Image src="/brand/moai-icon-cream.png" alt="Icona" width={60} height={28} className="h-auto w-[60px]" /></div>
               <details><summary className="cursor-pointer text-graphite">Riferimenti di tendenza</summary><ul className="mt-2 flex flex-col gap-1 text-graphite">{REFERENCES.map((r) => <li key={r.name}><span className="font-medium text-blackout">{r.name}</span>: {r.lesson}</li>)}</ul></details>
             </CardContent>
           </Card>

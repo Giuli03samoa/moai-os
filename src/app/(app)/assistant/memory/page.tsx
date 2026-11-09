@@ -16,7 +16,7 @@ export default async function MemoryPage({ searchParams }: { searchParams: Promi
       <PageHeader title="Memoria dell'assistente" subtitle="Fatti durevoli che l'assistente usa come contesto: fornitori, obiettivi, preferenze, decisioni. Niente dati personali dei clienti." actions={<Button asChild variant="ghost" size="sm"><Link href="/assistant">← Assistente</Link></Button>} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardContent className="flex flex-col gap-3 pt-5">
             {rows.length === 0 ? <p className="text-sm text-graphite">Memoria vuota. L&apos;assistente salva quello che gli chiedi di ricordare; puoi aggiungere fatti anche da qui.</p> : null}

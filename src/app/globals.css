@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
-/* MOAI Athletics palette (brand guide Softriver 2026) */
+/* dark: variant follows the data-theme attribute set before first paint (see layout.tsx) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* collapsed: variant for the icon-only sidebar (state on <html data-sidebar>) */
+@custom-variant collapsed (&:where([data-sidebar="collapsed"] *));
+
+/*
+ * MOAI Athletics palette (brand guide Softriver 2026).
+ * The utilities keep their brand names; in dark mode the same names are remapped so every page
+ * flips without per-page changes: "blackout" stays the ink, "crocus" stays the paper.
+ */
 @theme {
   --color-blackout: #222222;
   --color-crocus: #eae7e7;
@@ -9,6 +18,7 @@
   --color-steel: #bcbfcc;
   --color-smoke: #d3d6e0;
   --color-cloud: #edeff7;
+  --color-white: #ffffff;
 
   --color-ok: #3f6f4f;
   --color-ok-bg: #e3efe6;
@@ -17,18 +27,113 @@
   --color-bad: #8c3a3a;
   --color-bad-bg: #f3e0e0;
 
+  /* fixed brand colours that never flip (logo plates, sidebar) */
+  --color-ink: #222222;
+  --color-paper: #eae7e7;
+
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  --radius-card: 14px;
+  --radius-card: 18px;
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 0.25s ease-out both;
+  --animate-pop: pop 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
 }
 
 :root {
   color-scheme: light;
+  --canvas: #eae7e7;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-solid: #ffffff;
+  --sidebar: #222222;
+  --sidebar-hover: rgba(234, 231, 231, 0.07);
+  --hairline: rgba(34, 34, 34, 0.08);
+  --shadow-card: 0 1px 2px rgba(34, 34, 34, 0.04), 0 8px 24px -12px rgba(34, 34, 34, 0.12);
+  --shadow-float: 0 24px 64px -16px rgba(34, 34, 34, 0.35), 0 2px 6px rgba(34, 34, 34, 0.08);
+  --glass: rgba(234, 231, 231, 0.72);
+}
+
+/* Dark: Black Out as the base, Early Crocus as the ink. Same names, inverted roles. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-blackout: #eae7e7;
+  --color-crocus: #191919;
+  --color-graphite: #a3a7b6;
+  --color-space: #7d8191;
+  --color-steel: #4a4c55;
+  --color-smoke: #303033;
+  --color-cloud: #2a2a2d;
+  --color-white: #232323;
+  --color-ok: #8fc79f;
+  --color-ok-bg: #1f2c23;
+  --color-warn: #e1c27a;
+  --color-warn-bg: #30281a;
+  --color-bad: #e8a0a0;
+  --color-bad-bg: #362121;
+  --canvas: #191919;
+  --surface: rgba(35, 35, 35, 0.82);
+  --surface-solid: #232323;
+  --sidebar: #121212;
+  --sidebar-hover: rgba(234, 231, 231, 0.06);
+  --hairline: rgba(234, 231, 231, 0.07);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -14px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 24px 64px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(234, 231, 231, 0.06);
+  --glass: rgba(25, 25, 25, 0.72);
+}
+
+/* Force the light palette inside a subtree (tech pack, print previews). */
+.theme-light {
+  --color-blackout: #222222;
+  --color-crocus: #eae7e7;
+  --color-graphite: #6e7180;
+  --color-space: #9da2b3;
+  --color-steel: #bcbfcc;
+  --color-smoke: #d3d6e0;
+  --color-cloud: #edeff7;
+  --color-white: #ffffff;
+  --color-ok: #3f6f4f;
+  --color-ok-bg: #e3efe6;
+  --color-warn: #8a6a1f;
+  --color-warn-bg: #f4ecd6;
+  --color-bad: #8c3a3a;
+  --color-bad-bg: #f3e0e0;
+  color-scheme: light;
+}
+
+/* Fixed dark subtree (sidebar, logo plates): brand colours with light ink, whatever the theme. */
+.theme-ink {
+  --color-blackout: #eae7e7;
+  --color-crocus: #222222;
+  --color-graphite: #9da2b3;
+  --color-space: #6e7180;
+  --color-steel: #bcbfcc;
+  --color-smoke: rgba(234, 231, 231, 0.1);
+  --color-cloud: rgba(234, 231, 231, 0.06);
+  --color-white: rgba(234, 231, 231, 0.06);
+  color-scheme: dark;
+}
+
+html {
+  background: var(--canvas);
 }
 
 body {
-  @apply bg-crocus text-blackout antialiased;
+  @apply text-blackout antialiased;
+  background: var(--canvas);
   letter-spacing: -0.01em;
 }
 
@@ -36,18 +141,89 @@ h1, h2, h3 {
   letter-spacing: -0.03em;
 }
 
+::selection {
+  background: var(--color-blackout);
+  color: var(--color-crocus);
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* subtle chevron pattern for the sidebar footer */
+/* Thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-steel) transparent;
+}
+.sidebar-scroll {
+  scrollbar-color: rgba(234, 231, 231, 0.12) transparent;
+}
+
+/* Chevron motif from the brand pattern, drawn with fine lines (no colour gradients). */
 .chevron-pattern {
-  background-image: repeating-linear-gradient(135deg, rgba(234, 231, 231, 0.06) 0 2px, transparent 2px 12px),
-    repeating-linear-gradient(45deg, rgba(234, 231, 231, 0.06) 0 2px, transparent 2px 12px);
+  background-image: repeating-linear-gradient(135deg, rgba(234, 231, 231, 0.05) 0 1.5px, transparent 1.5px 14px),
+    repeating-linear-gradient(45deg, rgba(234, 231, 231, 0.05) 0 1.5px, transparent 1.5px 14px);
+}
+.chevron-pattern-ink {
+  background-image: repeating-linear-gradient(135deg, var(--hairline) 0 1.5px, transparent 1.5px 14px),
+    repeating-linear-gradient(45deg, var(--hairline) 0 1.5px, transparent 1.5px 14px);
+}
+
+.surface {
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  backdrop-filter: saturate(160%) blur(18px);
+}
+.shadow-float {
+  box-shadow: var(--shadow-float);
+}
+
+/* Page content eases in; staggered children. */
+.page-enter > * {
+  animation: var(--animate-rise);
+}
+.page-enter > *:nth-child(2) { animation-delay: 40ms; }
+.page-enter > *:nth-child(3) { animation-delay: 80ms; }
+.page-enter > *:nth-child(4) { animation-delay: 120ms; }
+.page-enter > *:nth-child(n + 5) { animation-delay: 160ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  background: var(--color-cloud);
+  color: var(--color-blackout);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+input[type="file"] {
+  padding-top: 0.2rem;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.6;
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Desktop app (MOAI OS.app): room for the window buttons in the transparent title bar. */
+html[data-desktop] .desktop-titlebar-pad {
+  padding-top: 30px;
 }
 
 /* Markdown from the assistant and the briefing */
@@ -62,7 +238,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .prose-moai li { margin: 0.15em 0; }
 .prose-moai strong { font-weight: 500; }
 .prose-moai code { font-family: var(--font-mono); font-size: 0.85em; background: var(--color-cloud); padding: 0 0.3em; border-radius: 4px; }
-.prose-moai pre { background: var(--color-blackout); color: var(--color-crocus); padding: 0.75rem; border-radius: 10px; overflow-x: auto; font-size: 0.8em; }
+.prose-moai pre { background: var(--color-ink); color: var(--color-paper); padding: 0.75rem; border-radius: 10px; overflow-x: auto; font-size: 0.8em; }
 .prose-moai pre code { background: transparent; padding: 0; color: inherit; }
 .prose-moai table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.85em; }
 .prose-moai th, .prose-moai td { border-bottom: 1px solid var(--color-smoke); padding: 0.35em 0.5em; text-align: left; }
@@ -70,3 +246,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .prose-moai a { text-decoration: underline; text-underline-offset: 3px; }
 .prose-moai blockquote { border-left: 3px solid var(--color-steel); padding-left: 0.75em; color: var(--color-graphite); }
 .prose-moai hr { border-color: var(--color-smoke); margin: 1em 0; }
+
+@media print {
+  :root, :root[data-theme="dark"] {
+    --color-blackout: #222222;
+    --color-crocus: #ffffff;
+    --color-graphite: #6e7180;
+    --color-space: #9da2b3;
+    --color-steel: #bcbfcc;
+    --color-smoke: #d3d6e0;
+    --color-cloud: #edeff7;
+    --color-white: #ffffff;
+    --canvas: #ffffff;
+    --surface: #ffffff;
+    color-scheme: light;
+  }
+  .page-enter > * { animation: none; }
+}

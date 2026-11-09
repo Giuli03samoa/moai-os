@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, TBody, TD, TH, THead, TR, Table, Empty } from "@/components/ui/primitives";
 
@@ -49,19 +49,22 @@ export function DataTable<T>({ rows, columns, total, query, basePath, params, em
         {Object.entries(params ?? {}).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
         <input type="hidden" name="sort" value={query.sort} />
         <input type="hidden" name="dir" value={query.dir} />
-        <Input name="q" defaultValue={query.q} placeholder={searchPlaceholder ?? "Cerca…"} className="max-w-xs" />
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-space" strokeWidth={1.75} />
+          <Input name="q" defaultValue={query.q} placeholder={searchPlaceholder ?? "Cerca…"} className="rounded-full pl-9" />
+        </div>
         <Button type="submit" variant="secondary" size="sm">Cerca</Button>
         {query.q ? (
           <Button asChild variant="ghost" size="sm">
             <Link href={href({ q: undefined, page: "1" })}>Azzera</Link>
           </Button>
         ) : null}
-        <span className="ml-auto text-xs text-graphite">{total} risultati</span>
+        <span className="ml-auto rounded-full bg-cloud px-2.5 py-1 text-xs text-graphite tabular">{total} risultati</span>
       </form>
       {rows.length === 0 ? (
         <Empty title={emptyTitle} />
       ) : (
-        <div className="rounded-[14px] border border-smoke bg-white/80">
+        <div className="surface overflow-hidden rounded-[18px] border border-[var(--hairline)]">
           <Table>
             <THead>
               <TR className="hover:bg-transparent">

@@ -28,7 +28,9 @@
     "service:restart": "launchctl kickstart -k gui/$(id -u)/it.moaiathletics.os.app",
     "backup:now": "tsx scripts/backup.ts",
     "backup:verify": "tsx scripts/restore-backup.ts --verify",
-    "backup:extract": "tsx scripts/restore-backup.ts --extract"
+    "backup:extract": "tsx scripts/restore-backup.ts --extract",
+    "desktop:build": "bash desktop/build.sh",
+    "desktop:icons": "python3 desktop/make-icons.py && iconutil -c icns desktop/AppIcon.iconset -o desktop/AppIcon.icns"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

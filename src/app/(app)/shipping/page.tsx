@@ -32,7 +32,7 @@ export default async function ShippingPage({ searchParams }: { searchParams: Pro
   const extra = { filter };
   return (
     <div>
-      <PageHeader title="Shipping" subtitle="Ordini da preparare, stato delle spedizioni e costi logistici. Le spedizioni le crea l'integrazione Shopify–Packlink PRO: qui vengono solo lette e monitorate."
+      <PageHeader title="Spedizioni" subtitle="Ordini da preparare, stato delle spedizioni e costi logistici. Le spedizioni le crea l'integrazione Shopify–Packlink PRO: qui vengono solo lette e monitorate."
         actions={<>{hasRole(auth.role, "OPERATIONS") ? <Button asChild size="sm" variant="outline"><Link href="/payments/import?kind=SHIPMENTS">Importa CSV Packlink</Link></Button> : null}<Button asChild variant="outline" size="sm"><a href="/api/export/shipments?period=ytd">Esporta CSV</a></Button></>} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">

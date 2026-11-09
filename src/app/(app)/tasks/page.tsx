@@ -28,7 +28,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <Link key={f} href={`/tasks?filter=${f}`} className={`rounded-full px-3 py-1 text-xs ${filter === f ? "bg-blackout text-crocus" : "bg-cloud text-graphite hover:text-blackout"}`}>{l}</Link>
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card>
           <CardContent className="pt-5">
             {rows.length === 0 ? <p className="text-sm text-graphite">Nessun task.</p> : (

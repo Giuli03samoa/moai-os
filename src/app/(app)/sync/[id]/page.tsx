@@ -22,7 +22,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
       <PageHeader title={JOB_LABELS[job.type] ?? job.type} subtitle={<span className="flex items-center gap-2"><Badge tone={s.tone}>{s.label}</Badge> {job.connection ? <Link href={`/integrations/${job.connection.key}`} className="hover:underline">{job.connection.displayName}</Link> : null} · <span className="font-mono text-xs">{job.id}</span></span>}
         actions={<>{canRun && (job.status === "DEAD" || job.status === "FAILED") ? <form action={retryJobAction}><input type="hidden" name="id" value={job.id} /><Button size="sm">Riprova adesso</Button></form> : null}{canRun && (job.status === "QUEUED" || job.status === "FAILED") ? <form action={cancelJobAction}><input type="hidden" name="id" value={job.id} /><Button size="sm" variant="outline">Annulla</Button></form> : null}<Button asChild variant="ghost" size="sm"><Link href="/sync">← Sync</Link></Button></>} />
       {job.lastError ? <div className="mb-4"><Notice tone={job.status === "DEAD" ? "bad" : "warn"}><strong>Ultimo errore:</strong> {job.lastError}</Notice></div> : null}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1.4fr]">
         <Card>
           <CardHeader><CardTitle>Dettagli</CardTitle></CardHeader>
           <CardContent>

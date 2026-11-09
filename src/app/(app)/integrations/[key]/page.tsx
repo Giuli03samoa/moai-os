@@ -37,7 +37,7 @@ export default async function IntegrationDetail({ params, searchParams }: { para
       {c?.blockedReason ? <div className="mb-4"><Notice tone="warn"><strong>Bloccato:</strong> {c.blockedReason}</Notice></div> : null}
       {c?.lastError && c.status === "ERROR" ? <div className="mb-4"><Notice tone="bad">{c.lastError}</Notice></div> : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_1fr]">
         <Card>
           <CardHeader><CardTitle>Configurazione</CardTitle></CardHeader>
           <CardContent>

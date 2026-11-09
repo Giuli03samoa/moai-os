@@ -30,7 +30,7 @@ export default async function DesignProjectPage({ params, searchParams }: { para
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-6">
           <section>
             <h2 className="mb-3 text-[11px] font-medium uppercase tracking-wide text-graphite">Asset ({p.assets.length})</h2>

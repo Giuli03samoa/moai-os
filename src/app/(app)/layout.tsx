@@ -1,5 +1,6 @@
 import { requireAuth } from "@/server/auth/session";
 import { db } from "@/server/db";
+import { isAgentConfigured } from "@/server/agent/config";
 import { AppShell } from "@/components/app-shell";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     db.agentApproval.count({ where: { organizationId: auth.organizationId, status: "PENDING" } }),
   ]);
   return (
-    <AppShell auth={auth} demo={process.env.DEMO_MODE === "true"} badges={{ "/alerts": alerts, "/tasks": tasks, "/assistant": approvals }}>
+    <AppShell
+      user={{ name: auth.name, role: auth.role, orgName: auth.orgName }}
+      demo={process.env.DEMO_MODE === "true"}
+      assistantEnabled={isAgentConfigured()}
+      badges={{ "/alerts": alerts, "/tasks": tasks, "/assistant": approvals }}
+    >
       {children}
     </AppShell>
   );

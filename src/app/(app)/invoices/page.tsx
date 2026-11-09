@@ -1,3 +1,4 @@
+import { CONNECTION_STATUS_LABEL } from "@/lib/labels";
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireAuth, hasRole } from "@/server/auth/session";
@@ -36,17 +37,17 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const exportQs = new URLSearchParams(Object.fromEntries(Object.entries({ period: range.key, from: sp.from, to: sp.to }).filter(([, v]) => v)) as Record<string, string>).toString();
   return (
     <div>
-      <PageHeader title="Invoices" subtitle="Archivio ricercabile delle fatture FatturaPA (emesse e ricevute). Copia di lavoro: la conservazione a norma resta su Aruba." actions={<><PeriodFilter basePath="/invoices" current={range.key} from={range.from} to={range.to} tz={auth.timezone} extra={{ direction }} /><Button asChild variant="outline" size="sm"><a href={`/api/export/invoices?${exportQs}`}>Esporta CSV</a></Button></>} />
+      <PageHeader title="Fatture" subtitle="Archivio ricercabile delle fatture FatturaPA (emesse e ricevute). Copia di lavoro: la conservazione a norma resta su Aruba." actions={<><PeriodFilter basePath="/invoices" current={range.key} from={range.from} to={range.to} tz={auth.timezone} extra={{ direction }} /><Button asChild variant="outline" size="sm"><a href={`/api/export/invoices?${exportQs}`}>Esporta CSV</a></Button></>} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
       {!org?.vatNumber ? <div className="mb-4"><Notice tone="warn">Inserisci la Partita IVA in <Link href="/settings" className="underline">Settings</Link>: serve per distinguere automaticamente fatture emesse e ricevute nei file caricati a mano.</Notice></div> : null}
-      <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_auto]">
+      <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="flex flex-wrap items-center gap-1">
           {[{ v: undefined, l: "Tutte" }, { v: "ACTIVE", l: "Emesse" }, { v: "PASSIVE", l: "Ricevute" }].map((f) => (
             <Link key={f.l} href={`/invoices?${new URLSearchParams({ period: range.key, ...(sp.from ? { from: sp.from, to: sp.to ?? "" } : {}), ...(f.v ? { direction: f.v } : {}) })}`} className={`rounded-full px-3 py-1 text-xs ${direction === f.v && !sp.due ? "bg-blackout text-crocus" : "bg-cloud text-graphite hover:text-blackout"}`}>{f.l}</Link>
           ))}
           <Link href={`/invoices?period=ytd&due=overdue`} className={`rounded-full px-3 py-1 text-xs ${sp.due === "overdue" ? "bg-bad text-crocus" : "bg-bad-bg text-bad"}`}>Scadute non pagate: {overdue}</Link>
-          <span className="ml-2 text-xs text-graphite">Aruba API: {aruba ? <Link href="/integrations/aruba" className="underline">{aruba.status}</Link> : <Link href="/integrations/aruba" className="underline">non configurata</Link>}</span>
+          <span className="ml-2 text-xs text-graphite">Aruba: {aruba ? <Link href="/integrations/aruba" className="underline">{CONNECTION_STATUS_LABEL[aruba.status]?.label ?? aruba.status}</Link> : <Link href="/integrations/aruba" className="underline">non configurata</Link>}</span>
         </div>
         {hasRole(auth.role, "OPERATIONS") ? (
           <Card className="min-w-[320px]">

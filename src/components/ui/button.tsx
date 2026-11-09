@@ -4,18 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-[background-color,color,border-color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-graphite/20 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-blackout text-crocus hover:bg-graphite",
+        default: "bg-blackout text-crocus shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-blackout/85",
         secondary: "bg-cloud text-blackout hover:bg-smoke",
-        outline: "border border-steel bg-transparent text-blackout hover:bg-cloud",
+        outline: "border border-smoke bg-white/60 text-blackout hover:border-steel hover:bg-white",
         ghost: "text-graphite hover:bg-cloud hover:text-blackout",
         destructive: "bg-bad text-crocus hover:opacity-90",
-        link: "text-blackout underline-offset-4 hover:underline rounded-none",
+        link: "rounded-none text-blackout underline-offset-4 hover:underline active:scale-100",
       },
-      size: { default: "h-9 px-4", sm: "h-8 px-3 text-xs", lg: "h-11 px-6 text-base", icon: "h-9 w-9" },
+      size: { default: "h-9 px-4", sm: "h-8 px-3 text-xs", lg: "h-11 px-6 text-[15px]", icon: "h-9 w-9" },
     },
     defaultVariants: { variant: "default", size: "default" },
   },

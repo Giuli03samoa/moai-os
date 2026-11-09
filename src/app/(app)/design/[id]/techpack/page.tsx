@@ -17,7 +17,7 @@ export default async function TechPackPage({ params }: { params: Promise<{ id: s
   if (!p) notFound();
   type Meta = { garment?: string | null; color?: string | null; placement?: string | null; intendedGarmentColor?: string | null; notes?: string | null };
   return (
-    <div className="mx-auto max-w-3xl bg-white p-8 text-blackout print:p-0">
+    <div className="theme-light mx-auto max-w-3xl rounded-[18px] bg-white p-8 text-blackout shadow-[var(--shadow-card)] print:rounded-none print:p-0 print:shadow-none">
       <div className="mb-6 flex items-center justify-between print:hidden"><Button asChild variant="ghost" size="sm"><Link href={`/design/${p.id}`}>← Progetto</Link></Button><p className="text-xs text-graphite">Stampa questa pagina (Cmd+P) e salva in PDF per lo stampatore.</p></div>
       <header className="flex items-start justify-between border-b border-smoke pb-6">
         <div>

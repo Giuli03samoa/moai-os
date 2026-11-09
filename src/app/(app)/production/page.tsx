@@ -43,14 +43,14 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       </div>
 
       {tab === "orders" ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <Card><CardContent className="pt-5">
             {orders.length === 0 ? <p className="text-sm text-graphite">Nessun ordine di produzione.</p> : (
               <Table>
                 <THead><TR><TH>Rif.</TH><TH>Descrizione</TH><TH>Fornitore</TH><TH className="text-right">Q.tà</TH><TH className="text-right">Costo</TH><TH>Atteso</TH><TH>Stato</TH><TH></TH></TR></THead>
                 <TBody>{orders.map((o) => { const st = PRODUCTION_STATUS_LABEL[o.status]!; const late = o.expectedAt && o.expectedAt < new Date() && !["RECEIVED", "CANCELLED"].includes(o.status); return (
                   <TR key={o.id}>
-                    <TD className="font-mono text-xs">{o.reference}</TD>
+                    <TD className="whitespace-nowrap font-mono text-xs">{o.reference}</TD>
                     <TD><p>{o.description}</p>{o.designProject ? <Link href={`/design/${o.designProject.id}`} className="text-[11px] text-graphite hover:underline">{o.designProject.name}</Link> : null}</TD>
                     <TD className="text-xs">{o.supplier?.name ?? "—"}</TD>
                     <TD className="text-right tabular">{o.quantity ?? "—"}</TD>
@@ -78,7 +78,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       ) : null}
 
       {tab === "suppliers" ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <Card><CardContent className="pt-5">
             {suppliers.length === 0 ? <p className="text-sm text-graphite">Nessun fornitore.</p> : (
               <Table>
@@ -101,7 +101,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       ) : null}
 
       {tab === "expenses" ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <Card><CardContent className="pt-5">
             {expenses.length === 0 ? <p className="text-sm text-graphite">Nessuna spesa nel periodo.</p> : (
               <Table>
