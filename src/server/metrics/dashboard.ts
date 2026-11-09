@@ -1,3 +1,4 @@
+import { CREDIT_NOTE_TYPES } from "@/server/invoices/fatturapa";
 import { Prisma } from "@prisma/client";
 import { TZDate } from "@date-fns/tz";
 import { db } from "../db";
@@ -52,6 +53,8 @@ async function sourcesOf(table: "order" | "paymentTransaction" | "payout" | "inv
   return rows.map((r) => r.source);
 }
 
+const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
 export async function getDashboardMetrics(orgId: string, range: Range, currency: string): Promise<Metric[]> {
   const sync = await lastSync(orgId);
   const [srcOrders, srcPayments, srcPayouts, srcInvoices, srcShipments] = await Promise.all([
@@ -65,9 +68,10 @@ export async function getDashboardMetrics(orgId: string, range: Range, currency:
   const captured = await db.paymentTransaction.aggregate({ _sum: { amount: true }, where: { organizationId: orgId, deletedAt: null, ledger: "ORDER", status: "SUCCESS", kind: { in: ["SALE", "CAPTURE"] }, processedAt: inRange, isDemo: undefined } });
   const fees = await db.paymentTransaction.aggregate({ _sum: { fee: true }, where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", status: "SUCCESS", processedAt: inRange } });
   const payouts = await db.payout.aggregate({ _sum: { netAmount: true }, _count: { _all: true }, where: { organizationId: orgId, deletedAt: null, status: "PAID", OR: [{ arrivalDate: inRange }, { arrivalDate: null, issuedAt: inRange }] } });
-  const invActive = await db.invoice.aggregate({ _sum: { totalAmount: true }, _count: { _all: true }, where: { organizationId: orgId, deletedAt: null, direction: "ACTIVE", issueDate: inRange, documentType: { notIn: ["TD04", "TD08"] } } });
-  const invActiveCredit = await db.invoice.aggregate({ _sum: { totalAmount: true }, where: { organizationId: orgId, deletedAt: null, direction: "ACTIVE", issueDate: inRange, documentType: { in: ["TD04", "TD08"] } } });
-  const invPassive = await db.invoice.aggregate({ _sum: { totalAmount: true }, _count: { _all: true }, where: { organizationId: orgId, deletedAt: null, direction: "PASSIVE", issueDate: inRange } });
+  // Credit notes (TD04/TD08) carry positive amounts in the XML: they are subtracted, never added.
+  const invTotals = (direction: "ACTIVE" | "PASSIVE", credit: boolean) =>
+    db.invoice.aggregate({ _sum: { totalAmount: true }, _count: { _all: true }, where: { organizationId: orgId, deletedAt: null, direction, issueDate: inRange, documentType: credit ? { in: CREDIT_NOTE_TYPES } : { notIn: CREDIT_NOTE_TYPES } } });
+  const [invActive, invActiveCredit, invPassive, invPassiveCredit] = await Promise.all([invTotals("ACTIVE", false), invTotals("ACTIVE", true), invTotals("PASSIVE", false), invTotals("PASSIVE", true)]);
   const toShip = await db.order.count({
     where: { organizationId: orgId, deletedAt: null, test: false, cancelledAt: null, financialStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "PARTIALLY_PAID", "AUTHORIZED"] }, fulfillmentStatus: { in: ["UNFULFILLED", "PARTIALLY_FULFILLED", "IN_PROGRESS", "OPEN", "SCHEDULED", "ON_HOLD", "PENDING_FULFILLMENT"] } },
   });
@@ -86,8 +90,8 @@ export async function getDashboardMetrics(orgId: string, range: Range, currency:
     { key: "captured", label: "Pagamenti acquisiti", value: D(captured._sum.amount).toFixed(2), format: "money", currency, sources: srcPayments.filter((s) => s === "SHOPIFY" || s === "DEMO"), updatedAt: sync.payments, definition: "Σ transazioni SALE/CAPTURE riuscite registrate sugli ordini (ledger ordini). Non si somma alle vendite.", href: "/payments" },
     { key: "fees", label: "Commissioni gateway", value: D(fees._sum.fee).toFixed(2), format: "money", currency, sources: srcPayments.filter((s) => s !== "SHOPIFY"), updatedAt: sync.payments, definition: "Σ commissioni dal ledger dei gateway (API o CSV)", href: "/payments" },
     { key: "payouts", label: "Accrediti liquidati", value: D(payouts._sum.netAmount).toFixed(2), format: "money", currency, sources: srcPayouts, updatedAt: sync.payouts, definition: `Σ netto dei payout con stato PAID (${payouts._count._all} payout). È denaro già contato nelle vendite: non è ricavo aggiuntivo.`, href: "/payments?tab=payouts" },
-    { key: "invoicesIssued", label: "Fatture emesse", value: D(invActive._sum.totalAmount).minus(D(invActiveCredit._sum.totalAmount)).toFixed(2), format: "money", currency, sources: srcInvoices, updatedAt: sync.invoices, definition: `${invActive._count._all} fatture emesse nel periodo, al netto delle note di credito`, href: "/invoices?direction=ACTIVE" },
-    { key: "invoicesReceived", label: "Fatture ricevute", value: D(invPassive._sum.totalAmount).toFixed(2), format: "money", currency, sources: srcInvoices, updatedAt: sync.invoices, definition: `${invPassive._count._all} fatture passive nel periodo`, href: "/invoices?direction=PASSIVE" },
+    { key: "invoicesIssued", label: "Fatture emesse", value: D(invActive._sum.totalAmount).minus(D(invActiveCredit._sum.totalAmount)).toFixed(2), format: "money", currency, sources: srcInvoices, updatedAt: sync.invoices, definition: `${n(invActive._count._all, "fattura emessa", "fatture emesse")} nel periodo (IVA inclusa), al netto di ${n(invActiveCredit._count._all, "nota di credito", "note di credito")}`, href: "/invoices?direction=ACTIVE" },
+    { key: "invoicesReceived", label: "Fatture ricevute", value: D(invPassive._sum.totalAmount).minus(D(invPassiveCredit._sum.totalAmount)).toFixed(2), format: "money", currency, sources: srcInvoices, updatedAt: sync.invoices, definition: `${n(invPassive._count._all, "fattura ricevuta", "fatture ricevute")} nel periodo (IVA inclusa), al netto di ${n(invPassiveCredit._count._all, "nota di credito", "note di credito")}`, href: "/invoices?direction=PASSIVE" },
     { key: "toShip", label: "Spedizioni da preparare", value: String(toShip), format: "count", sources: srcOrders, updatedAt: sync.orders, definition: "Ordini pagati non ancora evasi (indipendente dal periodo)", href: "/shipping" },
     { key: "refunded", label: "Ordini rimborsati", value: String(refunded._count._all), format: "count", sources: srcOrders, updatedAt: sync.orders, definition: `Ordini con rimborsi nel periodo, per ${refunds.toFixed(2)} ${currency}`, href: "/orders?status=REFUNDED" },
     { key: "unreconciled", label: "Transazioni non riconciliate", value: String(unreconciledTx + unreconciledPayouts), format: "count", sources: [...new Set([...srcPayments, ...srcPayouts])], updatedAt: sync.payments, definition: `${unreconciledTx} transazioni gateway e ${unreconciledPayouts} payout senza corrispondenza confermata; ${pendingSuggestions} proposte da verificare`, href: "/payments?tab=reconciliation" },

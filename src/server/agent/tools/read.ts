@@ -1,5 +1,6 @@
+import { CREDIT_NOTE_TYPES, isCreditNote } from "@/server/invoices/fatturapa";
 import { z } from "zod/v4";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "../../db";
 import { getDashboardMetrics, getDailySales, getGatewayBreakdown, getTopProducts } from "../../metrics/dashboard";
 import { listConnectors } from "../../connectors/registry";
@@ -186,9 +187,12 @@ export const listInvoices = defineTool({
     const [rows, total, sum] = await Promise.all([
       db.invoice.findMany({ where, orderBy: input.overdueOnly || input.dueWithinDays !== undefined ? { nextDueDate: "asc" } : { issueDate: "desc" }, take: lim(input.limit), include: { installments: { select: { position: true, dueDate: true, amount: true, paidAt: true } }, order: { select: { name: true } } } }),
       db.invoice.count({ where }),
-      db.invoice.aggregate({ where, _sum: { totalAmount: true } }),
+      Promise.all([
+        db.invoice.aggregate({ where: { AND: [where, { documentType: { notIn: CREDIT_NOTE_TYPES } }] }, _sum: { totalAmount: true } }),
+        db.invoice.aggregate({ where: { AND: [where, { documentType: { in: CREDIT_NOTE_TYPES } }] }, _sum: { totalAmount: true } }),
+      ]).then(([docs, credits]) => new Prisma.Decimal(docs._sum.totalAmount ?? 0).minus(credits._sum.totalAmount ?? 0)),
     ]);
-    return plain({ total, sumTotal: sum._sum.totalAmount, invoices: rows.map((i) => ({ id: i.id, direction: i.direction, documentType: i.documentType, number: i.number, issueDate: i.issueDate, total: i.totalAmount, taxable: i.taxableAmount, tax: i.taxAmount, currency: i.currency, counterparty: i.direction === "ACTIVE" ? i.receiverName : i.senderName, paymentStatus: i.paymentStatus, nextDueDate: i.nextDueDate, installments: i.installments, order: i.order?.name ?? null, sdiStatus: i.sdiStatus, source: i.source, isDemo: i.isDemo })) });
+    return plain({ total, sumTotal: sum, sumNote: "IVA inclusa, al netto delle note di credito (TD04/TD08)", invoices: rows.map((i) => ({ id: i.id, direction: i.direction, documentType: i.documentType, creditNote: isCreditNote(i.documentType), number: i.number, issueDate: i.issueDate, total: i.totalAmount, taxable: i.taxableAmount, tax: i.taxAmount, currency: i.currency, counterparty: i.direction === "ACTIVE" ? i.receiverName : i.senderName, paymentStatus: i.paymentStatus, nextDueDate: i.nextDueDate, installments: i.installments, order: i.order?.name ?? null, sdiStatus: i.sdiStatus, source: i.source, isDemo: i.isDemo })) });
   },
 });
 

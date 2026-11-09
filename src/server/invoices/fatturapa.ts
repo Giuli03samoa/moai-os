@@ -203,6 +203,7 @@ function str(v: unknown): string | null {
 }
 
 /** Credit notes reduce totals: TD04 (nota di credito), TD08 (nota di credito semplificata). */
+export const CREDIT_NOTE_TYPES = ["TD04", "TD08"];
 export function isCreditNote(documentType: string) {
-  return documentType === "TD04" || documentType === "TD08";
+  return CREDIT_NOTE_TYPES.includes(documentType);
 }
