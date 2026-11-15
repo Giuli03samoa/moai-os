@@ -80,7 +80,7 @@ Via connessione Shopify (job `shopify.payments.sync`). Nessuna credenziale separ
 ### PayPal, Stripe
 Credenziali verificabili (solo `GET /v1/balance` Stripe, `POST /v1/oauth2/token` PayPal). La **sincronizzazione API automatica è disattivata** nell'MVP, come richiesto: si attiva solo dopo aver identificato gli account reali e collaudato. Nel frattempo: **CSV**.
 
-### SumUp (vendite in presenza) — sola lettura, non ancora collaudato su account reale
+### SumUp (vendite in presenza) — sola lettura, collaudato su account reale il 2026-11-15
 
 Per eventi e pop-up. Chiave API creata dall'esercente in `me.sumup.com` → Impostazioni → Per sviluppatori → Chiavi API;
 header `Authorization: Bearer <chiave>`. Il codice esercente viene letto da `GET /v0.1/me` se non è inserito a mano.
@@ -97,8 +97,11 @@ Nessuna chiamata di scrittura (checkout, pagamenti, rimborsi) è implementata: i
 - Le vendite non e-commerce hanno `inPerson = true`: **non esiste un ordine Shopify**, quindi sono escluse dalla
   riconciliazione pagamento ↔ ordine e dal conteggio «non riconciliate», e compaiono nella card «Vendite in presenza»
   (IVA inclusa, al netto dei rimborsi). È l'unica eccezione alla regola «ricavi solo dagli ordini».
-- Da confermare con il primo accredito reale: segno e significato di `amount` nei record di trattenuta, e che
-  `PAYOUT.amount` sia già al netto della commissione (vedi `groupPayouts` in `sumup/map.ts`).
+- Collaudo del 2026-11-15 (evento del 14/11): 9 transazioni lette (8 riuscite, 1 fallita), commissione e IVA dal
+  dettaglio, 1 accredito; lordo 435,00, commissioni 8,49, netto 426,51 = «ultimo versamento» mostrato da SumUp.
+  Confermato che `PAYOUT.amount` è già al netto della commissione e che `GET /v0.1/me` restituisce il codice esercente.
+- Ancora da vedere su dati reali: record di trattenuta (rimborsi, chargeback) e transazioni con articoli di catalogo
+  (finora solo «Importo personalizzato», quindi senza nome del prodotto).
 - **Fisco**: SumUp non emette scontrini né conosce i dati del cliente. Il documento commerciale (procedura web
   dell'Agenzia delle Entrate o registratore telematico) o la fattura entro 12 giorni restano fuori da MOAI OS,
   che non automatizza nulla di fiscale.

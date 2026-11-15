@@ -18,7 +18,8 @@ export const sumupConnector: ConnectorDefinition = {
     "MOAI OS legge soltanto: non incassa, non rimborsa e non modifica nulla su SumUp.",
     "Le vendite fatte di persona sono segnate come «in presenza»: non hanno un ordine Shopify e non vengono abbinate agli ordini online.",
     "SumUp non conosce i dati fiscali del cliente e non emette scontrini: il documento commerciale (o la fattura, entro 12 giorni) resta da emettere a parte.",
-    "Il calcolo degli accrediti (netto in banca per bonifico) va confermato con il primo accredito reale.",
+    "Accrediti verificati il 15/11/2026 su un bonifico reale (lordo, commissioni e netto coincidono con SumUp). Le trattenute per rimborsi o contestazioni non si sono ancora presentate: da ricontrollare al primo caso.",
+    "Se incassi con «Importo personalizzato» MOAI OS non sa quale capo hai venduto: usa gli articoli del catalogo SumUp per avere anche il dettaglio dei prodotti.",
   ],
   async verify(ctx): Promise<VerifyResult> {
     if (!ctx.secrets.apiKey) return { status: "NOT_CONFIGURED", message: "Inserisci la chiave API" };
