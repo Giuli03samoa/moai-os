@@ -116,7 +116,7 @@ export const getOrder = defineTool({
 
 export const listPayments = defineTool({
   name: "list_payments",
-  description: "Transazioni di pagamento. ledger ORDER = registrate dal negozio; PROCESSOR = ledger del gateway (commissioni, netto, payout). unreconciledOnly mostra transazioni gateway senza corrispondenza confermata.",
+  description: "Transazioni di pagamento. ledger ORDER = registrate dal negozio; PROCESSOR = ledger del gateway (commissioni, netto, payout). provider \"sumup\" = vendite in presenza a eventi (inPerson: true, senza ordine Shopify, con i prodotti venduti se registrati nel catalogo SumUp). unreconciledOnly mostra transazioni gateway online senza corrispondenza confermata.",
   schema: z.object({ ledger: z.enum(["ORDER", "PROCESSOR"]).optional(), provider: z.string().max(40).optional(), unreconciledOnly: z.boolean().optional(), period: PERIOD.optional(), from: DATE.optional(), to: DATE.optional(), limit: LIMIT }),
   risk: "read",
   minRole: "VIEWER",
@@ -126,14 +126,14 @@ export const listPayments = defineTool({
     const where: Prisma.PaymentTransactionWhereInput = {
       organizationId: ctx.organizationId, deletedAt: null, processedAt: { gte: r.from, lte: r.to },
       ...(input.ledger ? { ledger: input.ledger } : {}), ...(input.provider ? { provider: { contains: input.provider, mode: "insensitive" } } : {}),
-      ...(input.unreconciledOnly ? { ledger: "PROCESSOR", status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } } : {}),
+      ...(input.unreconciledOnly ? { ledger: "PROCESSOR", inPerson: false, status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } } : {}),
     };
     const [rows, total, sums] = await Promise.all([
       db.paymentTransaction.findMany({ where, orderBy: { processedAt: "desc" }, take: lim(input.limit), include: { order: { select: { name: true } }, payout: { select: { externalId: true, status: true } } } }),
       db.paymentTransaction.count({ where }),
       db.paymentTransaction.aggregate({ where, _sum: { amount: true, fee: true, net: true } }),
     ]);
-    return plain({ total, sums: sums._sum, transactions: rows.map((t) => ({ id: t.id, ledger: t.ledger, provider: t.provider, kind: t.kind, status: t.status, amount: t.amount, fee: t.fee, net: t.net, currency: t.currency, processedAt: t.processedAt, order: t.order?.name ?? null, orderRef: t.orderRef, payout: t.payout, source: t.source, isDemo: t.isDemo })) });
+    return plain({ total, sums: sums._sum, transactions: rows.map((t) => ({ id: t.id, ledger: t.ledger, provider: t.provider, kind: t.kind, status: t.status, inPerson: t.inPerson, method: t.gateway, products: t.inPerson ? ((t.raw as { products?: unknown } | null)?.products ?? null) : undefined, amount: t.amount, fee: t.fee, net: t.net, currency: t.currency, processedAt: t.processedAt, order: t.order?.name ?? null, orderRef: t.orderRef, payout: t.payout, source: t.source, isDemo: t.isDemo })) });
   },
 });
 
@@ -413,6 +413,11 @@ export const getPnlEstimate = defineTool({
     const orgId = ctx.organizationId;
     const inRange = { gte: r.from, lte: r.to };
     const orderWhere = { organizationId: orgId, deletedAt: null, test: false, cancelledAt: null, processedAt: inRange };
+    const inPersonWhere = { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR" as const, inPerson: true, status: "SUCCESS" as const, processedAt: inRange };
+    const [inPersonSales, inPersonRefunds] = await Promise.all([
+      db.paymentTransaction.aggregate({ where: { ...inPersonWhere, kind: { in: ["SALE", "CAPTURE"] } }, _sum: { amount: true }, _count: { _all: true } }),
+      db.paymentTransaction.aggregate({ where: { ...inPersonWhere, kind: { in: ["REFUND", "CHARGEBACK"] } }, _sum: { amount: true } }),
+    ]);
     const [orders, fees, shipping, shippingMissing, expenses, production] = await Promise.all([
       db.order.aggregate({ where: orderWhere, _sum: { totalPrice: true, totalRefunded: true, totalShipping: true, totalTax: true }, _count: { _all: true } }),
       db.paymentTransaction.aggregate({ where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", status: "SUCCESS", processedAt: inRange }, _sum: { fee: true } }),
@@ -423,7 +428,9 @@ export const getPnlEstimate = defineTool({
     ]);
     const n = (v: Prisma.Decimal | null | undefined) => Number(v ?? 0);
     const gross = n(orders._sum.totalPrice);
-    const net = gross - n(orders._sum.totalRefunded);
+    const onlineNet = gross - n(orders._sum.totalRefunded);
+    const inPersonNet = n(inPersonSales._sum.amount) - n(inPersonRefunds._sum.amount);
+    const net = onlineNet + inPersonNet;
     const feeTotal = n(fees._sum.fee);
     const shipCost = n(shipping._sum.cost);
     const expTotal = expenses.reduce((a, e) => a + n(e._sum.amount), 0);
@@ -432,12 +439,12 @@ export const getPnlEstimate = defineTool({
     return {
       period: { from: r.from, to: r.to },
       currency: ctx.currency,
-      revenue: { gross: gross.toFixed(2), refunds: n(orders._sum.totalRefunded).toFixed(2), net: net.toFixed(2), orders: orders._count._all, taxIncluded: n(orders._sum.totalTax).toFixed(2), shippingChargedToCustomers: n(orders._sum.totalShipping).toFixed(2) },
+      revenue: { gross: gross.toFixed(2), refunds: n(orders._sum.totalRefunded).toFixed(2), onlineNet: onlineNet.toFixed(2), inPersonNet: inPersonNet.toFixed(2), inPersonSales: inPersonSales._count._all, net: net.toFixed(2), orders: orders._count._all, taxIncluded: n(orders._sum.totalTax).toFixed(2), shippingChargedToCustomers: n(orders._sum.totalShipping).toFixed(2) },
       costs: { gatewayFees: feeTotal.toFixed(2), shipping: shipCost.toFixed(2), shipmentsWithCost: shipping._count._all, shipmentsWithoutCost: shippingMissing, expensesByCategory: expenses.map((e) => ({ category: e.category, total: n(e._sum.amount).toFixed(2) })), expensesTotal: expTotal.toFixed(2), productionReceived: prodCost.toFixed(2), productionOrders: production._count._all },
       estimatedMargin: margin.toFixed(2),
       estimatedMarginPct: net ? ((margin / net) * 100).toFixed(1) : null,
-      aov: orders._count._all ? (net / orders._count._all).toFixed(2) : null,
-      caveats: ["Stima gestionale, non bilancio: le vendite includono IVA se gli ordini la includono.", shippingMissing ? `${shippingMissing} spedizioni senza costo registrato (importa il CSV Packlink).` : null, expenses.length ? null : "Nessuna spesa registrata nel periodo: il margine è sovrastimato.", "Le commissioni gateway sono quelle presenti nel ledger PROCESSOR (API o CSV)."].filter(Boolean),
+      aov: orders._count._all ? (onlineNet / orders._count._all).toFixed(2) : null,
+      caveats: ["Stima gestionale, non bilancio: le vendite includono IVA se gli ordini la includono.", shippingMissing ? `${shippingMissing} spedizioni senza costo registrato (importa il CSV Packlink).` : null, expenses.length ? null : "Nessuna spesa registrata nel periodo: il margine è sovrastimato.", "Le commissioni gateway sono quelle presenti nel ledger PROCESSOR (API o CSV).", inPersonSales._count._all ? "Le vendite in presenza (SumUp) sono incassi IVA inclusa senza ordine Shopify: sommate al netto online." : null].filter(Boolean),
     };
   },
 });

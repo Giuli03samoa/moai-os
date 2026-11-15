@@ -565,6 +565,7 @@ model PaymentTransaction {
   payoutId                   String?
   payoutExternalId           String?
   orderTransactionExternalId String? // for PROCESSOR rows: the matching ORDER-ledger transaction, when the source says so
+  inPerson                   Boolean          @default(false) // sold face to face (POS at an event): no online order exists, never matched to one
   importBatchId              String?
   raw                        Json?
   syncedAt                   DateTime         @default(now())

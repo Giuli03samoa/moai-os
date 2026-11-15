@@ -105,4 +105,4 @@ export const paymentConnectors: ConnectorDefinition[] = [
   csvOnly("bank", "Banca (estratto conto)", "banca-generico-it"),
 ];
 
-export const PAYMENT_PROVIDERS = ["shopify_payments", "paypal", "stripe", "satispay", "klarna", "scalapay", "amazon_pay", "manual", "other"] as const;
+export const PAYMENT_PROVIDERS = ["shopify_payments", "paypal", "stripe", "sumup", "satispay", "klarna", "scalapay", "amazon_pay", "manual", "other"] as const;

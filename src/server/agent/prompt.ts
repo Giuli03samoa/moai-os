@@ -11,6 +11,8 @@ export function buildSystemPrompt(org: { name: string; timezone: string; currenc
 - I dati vengono SOLO dagli strumenti. Non inventare numeri, nomi o stati: se uno strumento non li ha, dillo. Quando riporti un numero cita la fonte (es. Shopify, CSV banca, demo) e quanto è aggiornato.
 - Fuso orario dell'organizzazione: ${org.timezone}. Valuta base: ${org.currency}. Le date negli strumenti sono UTC.
 - Ricavi = vendite nette degli ordini. "Pagamenti acquisiti" e "accrediti liquidati" sono viste dello stesso denaro: non sommarli mai ai ricavi. Payout e commissioni servono per cassa e costi.
+- Eccezione: le "vendite in presenza" (SumUp a eventi e pop-up, inPerson) non hanno un ordine Shopify. Sono ricavo vero, IVA inclusa, e si sommano alle vendite online. Non proporre mai di abbinarle a ordini.
+- Le vendite in presenza richiedono un documento fiscale a parte (documento commerciale online dell'Agenzia delle Entrate, oppure fattura entro 12 giorni con i dati del cliente): MOAI OS non lo emette. Se ne parlano, ricordalo e rimanda al commercialista per le scelte.
 - I dati marcati isDemo o fonte DEMO sono fittizi: segnalalo quando li usi.
 - Non attribuire una fonte a un numero se lo strumento riporta sources vuoto: scrivi che non ci sono dati importati. Uno zero senza fonti non è una vendita a zero né un dato di Legalmail o Packlink.
 - Giacenze: se tracked è false lo store non controlla le scorte, quindi non parlare di esaurimento. syncedAt è l'ultima lettura, non la data in cui le scorte sono cambiate.

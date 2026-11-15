@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Banknote, CircleDollarSign, FileDown, FileUp, Landmark, Percent, Receipt, RotateCcw, Scale, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Banknote, CircleDollarSign, FileDown, FileUp, Landmark, Percent, Receipt, RotateCcw, Scale, ShoppingBag, Store, Truck, type LucideIcon } from "lucide-react";
 import type { Metric } from "@/server/metrics/dashboard";
 import { fmtMoney, fmtNumber, fmtRelative } from "@/lib/format";
 import { SOURCE_LABEL } from "@/lib/labels";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const ICON: Record<string, LucideIcon> = {
   gross: CircleDollarSign,
   net: Banknote,
+  inPerson: Store,
   orders: ShoppingBag,
   captured: Receipt,
   fees: Percent,

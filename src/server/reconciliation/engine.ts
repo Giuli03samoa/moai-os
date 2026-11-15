@@ -52,6 +52,7 @@ export async function reconcilePayments(organizationId: string) {
     where: {
       organizationId,
       ledger: "PROCESSOR",
+      inPerson: false, // face-to-face sales (SumUp at events) have no online order to match
       deletedAt: null,
       kind: { in: ["CAPTURE", "SALE", "REFUND", "CHARGEBACK"] },
       status: "SUCCESS",

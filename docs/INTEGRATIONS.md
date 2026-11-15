@@ -80,6 +80,29 @@ Via connessione Shopify (job `shopify.payments.sync`). Nessuna credenziale separ
 ### PayPal, Stripe
 Credenziali verificabili (solo `GET /v1/balance` Stripe, `POST /v1/oauth2/token` PayPal). La **sincronizzazione API automatica è disattivata** nell'MVP, come richiesto: si attiva solo dopo aver identificato gli account reali e collaudato. Nel frattempo: **CSV**.
 
+### SumUp (vendite in presenza) — sola lettura, non ancora collaudato su account reale
+
+Per eventi e pop-up. Chiave API creata dall'esercente in `me.sumup.com` → Impostazioni → Per sviluppatori → Chiavi API;
+header `Authorization: Bearer <chiave>`. Il codice esercente viene letto da `GET /v0.1/me` se non è inserito a mano.
+
+| Chiamata | Uso |
+|---|---|
+| `GET /v2.1/merchants/{code}/transactions/history` | vendite, rimborsi, chargeback; paginazione con `links[rel=next].href`, aggiornamenti con `changes_since` |
+| `GET /v2.1/merchants/{code}/transactions?id=` | commissione, IVA e righe prodotto di una vendita (una volta per vendita) |
+| `GET /v1.0/merchants/{code}/payouts` | accrediti e trattenute, un record per transazione; raggruppati per `reference` + data |
+
+Nessuna chiamata di scrittura (checkout, pagamenti, rimborsi) è implementata: il client sa fare solo `GET`.
+
+- Job `sumup.sync` (schedulato): transazioni nel ledger `PROCESSOR` con `provider = "sumup"`, accrediti in `Payout`.
+- Le vendite non e-commerce hanno `inPerson = true`: **non esiste un ordine Shopify**, quindi sono escluse dalla
+  riconciliazione pagamento ↔ ordine e dal conteggio «non riconciliate», e compaiono nella card «Vendite in presenza»
+  (IVA inclusa, al netto dei rimborsi). È l'unica eccezione alla regola «ricavi solo dagli ordini».
+- Da confermare con il primo accredito reale: segno e significato di `amount` nei record di trattenuta, e che
+  `PAYOUT.amount` sia già al netto della commissione (vedi `groupPayouts` in `sumup/map.ts`).
+- **Fisco**: SumUp non emette scontrini né conosce i dati del cliente. Il documento commerciale (procedura web
+  dell'Agenzia delle Entrate o registratore telematico) o la fattura entro 12 giorni restano fuori da MOAI OS,
+  che non automatizza nulla di fiscale.
+
 ### Import CSV (Payments → Importa CSV)
 Mapping JSON configurabile: colonne, separatore decimale, formato data, fuso, dizionari valori (`valueMaps`), righe da ignorare (`skipWhen`). Preset inclusi:
 

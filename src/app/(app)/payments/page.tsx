@@ -108,7 +108,7 @@ async function Transactions({ sp, range, auth, extra, exportQs }: Ctx) {
           { key: "amount", label: "Importo", sortable: true, align: "right", render: (r) => fmtMoney(r.amount.toString(), r.currency) },
           { key: "fee", label: "Commissione", align: "right", render: (r) => (r.fee ? fmtMoney(r.fee.toString(), r.currency) : <span className="text-graphite">—</span>) },
           { key: "net", label: "Netto", align: "right", render: (r) => (r.net ? fmtMoney(r.net.toString(), r.currency) : <span className="text-graphite">—</span>) },
-          { key: "order", label: "Ordine", render: (r) => (r.order ? <Link href={`/orders/${r.order.id}`} className="hover:underline">{r.order.name}</Link> : r.ledger === "PROCESSOR" ? <span className="text-xs text-warn">{r.reconciliations.some((x) => x.status === "SUGGESTED") ? "da verificare" : "non riconciliata"}</span> : <span className="text-graphite">{r.orderRef ?? "—"}</span>) },
+          { key: "order", label: "Ordine", render: (r) => (r.order ? <Link href={`/orders/${r.order.id}`} className="hover:underline">{r.order.name}</Link> : r.inPerson ? <Badge tone="muted">in presenza</Badge> : r.ledger === "PROCESSOR" ? <span className="text-xs text-warn">{r.reconciliations.some((x) => x.status === "SUGGESTED") ? "da verificare" : "non riconciliata"}</span> : <span className="text-graphite">{r.orderRef ?? "—"}</span>) },
           { key: "source", label: "Origine", render: (r) => <SourceTag source={r.source} updatedAt={r.syncedAt} demo={r.isDemo} /> },
         ]} />
     </div>
@@ -171,7 +171,7 @@ async function Reconciliation({ auth, exportQs }: { auth: Ctx["auth"]; exportQs:
   const settled = { in: ["AUTO_MATCHED", "CONFIRMED"] as const };
   const [suggestions, unmatchedTx, unmatchedPayouts, bankCredits, stats] = await Promise.all([
     db.reconciliation.findMany({ where: { organizationId: orgId, status: "SUGGESTED" }, orderBy: { createdAt: "desc" }, take: 100, include: { paymentTransaction: true, order: true, payout: true, bankTransaction: true, invoice: true } }),
-    db.paymentTransaction.findMany({ where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: [...settled.in] } } } }, orderBy: { processedAt: "desc" }, take: 50 }),
+    db.paymentTransaction.findMany({ where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", inPerson: false, status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: [...settled.in] } } } }, orderBy: { processedAt: "desc" }, take: 50 }),
     db.payout.findMany({ where: { organizationId: orgId, deletedAt: null, status: { in: ["PAID", "IN_TRANSIT"] }, reconciliations: { none: { type: "PAYOUT_BANK", status: { in: [...settled.in] } } } }, orderBy: { issuedAt: "desc" }, take: 50 }),
     db.bankTransaction.findMany({ where: { organizationId: orgId, deletedAt: null, amount: { gt: 0 }, reconciliations: { none: { type: "PAYOUT_BANK", status: { in: [...settled.in] } } } }, orderBy: { bookingDate: "desc" }, take: 100 }),
     db.reconciliation.groupBy({ by: ["status"], where: { organizationId: orgId }, _count: { _all: true } }),

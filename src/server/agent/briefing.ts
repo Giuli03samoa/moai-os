@@ -26,7 +26,7 @@ export async function buildBriefingData(organizationId: string) {
   const rYesterday = resolvePeriod({ period: "custom", from: yesterday, to: yesterday }, tz);
   const rMtd = resolvePeriod({ period: "mtd" }, tz);
   const rLastMonth = resolvePeriod({ period: "last_month" }, tz);
-  const pick = (ms: Awaited<ReturnType<typeof getDashboardMetrics>>) => Object.fromEntries(ms.filter((m) => ["gross", "net", "orders", "toShip", "unreconciled", "invoicesReceived"].includes(m.key)).map((m) => [m.key, { label: m.label, value: m.value, currency: m.currency, sources: m.sources, updatedAt: m.updatedAt }]));
+  const pick = (ms: Awaited<ReturnType<typeof getDashboardMetrics>>) => Object.fromEntries(ms.filter((m) => ["gross", "net", "inPerson", "orders", "toShip", "unreconciled", "invoicesReceived"].includes(m.key)).map((m) => [m.key, { label: m.label, value: m.value, currency: m.currency, sources: m.sources, updatedAt: m.updatedAt }]));
   const [mY, mMtd, mLast, alerts, tasks, approvals, connections, deadJobs, marketing, memories] = await Promise.all([
     getDashboardMetrics(organizationId, rYesterday, org.baseCurrency),
     getDashboardMetrics(organizationId, rMtd, org.baseCurrency),
@@ -72,6 +72,7 @@ export function renderRuleBriefing(d: Awaited<ReturnType<typeof buildBriefingDat
     "|---|---|---|---|",
     `| Vendite nette | ${m(y, "net")} | ${m(mtd, "net")} | ${m(last, "net")} |`,
     `| Ordini | ${m(y, "orders")} | ${m(mtd, "orders")} | ${m(last, "orders")} |`,
+    ...(Number(mtd.inPerson?.value ?? 0) || Number(last.inPerson?.value ?? 0) || Number(y.inPerson?.value ?? 0) ? [`| Vendite in presenza | ${m(y, "inPerson")} | ${m(mtd, "inPerson")} | ${m(last, "inPerson")} |`] : []),
     `| Da spedire | ${m(mtd, "toShip")} | | |`,
     `| Non riconciliate | ${m(mtd, "unreconciled")} | | |`,
     "",

@@ -13,8 +13,9 @@ import { ga4Connector } from "./ga4/connector";
 import { klaviyoConnector } from "./klaviyo/connector";
 import { emailConnector } from "./email/connector";
 import { legalmailConnector } from "./legalmail/connector";
+import { sumupConnector } from "./sumup/connector";
 
-const ALL: ConnectorDefinition[] = [shopifyConnector, arubaConnector, legalmailConnector, packlinkConnector, ...paymentConnectors, metaConnector, ga4Connector, klaviyoConnector, emailConnector, telegramConnector];
+const ALL: ConnectorDefinition[] = [shopifyConnector, arubaConnector, legalmailConnector, packlinkConnector, sumupConnector, ...paymentConnectors, metaConnector, ga4Connector, klaviyoConnector, emailConnector, telegramConnector];
 
 export function listConnectors(): ConnectorDefinition[] {
   return ALL;

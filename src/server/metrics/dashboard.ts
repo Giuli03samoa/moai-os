@@ -72,11 +72,19 @@ export async function getDashboardMetrics(orgId: string, range: Range, currency:
   const invTotals = (direction: "ACTIVE" | "PASSIVE", credit: boolean) =>
     db.invoice.aggregate({ _sum: { totalAmount: true }, _count: { _all: true }, where: { organizationId: orgId, deletedAt: null, direction, issueDate: inRange, documentType: credit ? { in: CREDIT_NOTE_TYPES } : { notIn: CREDIT_NOTE_TYPES } } });
   const [invActive, invActiveCredit, invPassive, invPassiveCredit] = await Promise.all([invTotals("ACTIVE", false), invTotals("ACTIVE", true), invTotals("PASSIVE", false), invTotals("PASSIVE", true)]);
+  // Face-to-face sales (SumUp at events): they are not Shopify orders, so they are reported on their own line.
+  const inPersonWhere = { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR" as const, inPerson: true, status: "SUCCESS" as const, processedAt: inRange };
+  const [inPersonSales, inPersonRefunds, inPersonSources, inPersonSyncedAt] = await Promise.all([
+    db.paymentTransaction.aggregate({ _sum: { amount: true }, _count: { _all: true }, where: { ...inPersonWhere, kind: { in: ["SALE", "CAPTURE"] } } }),
+    db.paymentTransaction.aggregate({ _sum: { amount: true }, where: { ...inPersonWhere, kind: { in: ["REFUND", "CHARGEBACK"] } } }),
+    db.paymentTransaction.groupBy({ by: ["source"], where: { organizationId: orgId, deletedAt: null, inPerson: true } }),
+    db.paymentTransaction.aggregate({ _max: { syncedAt: true }, where: { organizationId: orgId, deletedAt: null, inPerson: true } }),
+  ]);
   const toShip = await db.order.count({
     where: { organizationId: orgId, deletedAt: null, test: false, cancelledAt: null, financialStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "PARTIALLY_PAID", "AUTHORIZED"] }, fulfillmentStatus: { in: ["UNFULFILLED", "PARTIALLY_FULFILLED", "IN_PROGRESS", "OPEN", "SCHEDULED", "ON_HOLD", "PENDING_FULFILLMENT"] } },
   });
   const unreconciledTx = await db.paymentTransaction.count({
-    where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } },
+    where: { organizationId: orgId, deletedAt: null, ledger: "PROCESSOR", inPerson: false, status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } },
   });
   const unreconciledPayouts = await db.payout.count({ where: { organizationId: orgId, deletedAt: null, status: { in: ["PAID", "IN_TRANSIT"] }, reconciliations: { none: { type: "PAYOUT_BANK", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } } });
   const pendingSuggestions = await db.reconciliation.count({ where: { organizationId: orgId, status: "SUGGESTED" } });
@@ -86,6 +94,7 @@ export async function getDashboardMetrics(orgId: string, range: Range, currency:
   return [
     { key: "gross", label: "Vendite lorde", value: gross.toFixed(2), format: "money", currency, sources: srcOrders, updatedAt: sync.orders, definition: "Σ totale ordini (IVA e spedizione incluse), esclusi annullati e test", href: "/orders" },
     { key: "net", label: "Vendite nette", value: gross.minus(refunds).toFixed(2), format: "money", currency, sources: srcOrders, updatedAt: sync.orders, definition: "Vendite lorde − importi rimborsati", href: "/orders" },
+    { key: "inPerson", label: "Vendite in presenza", value: D(inPersonSales._sum.amount).minus(D(inPersonRefunds._sum.amount)).toFixed(2), format: "money", currency, sources: inPersonSources.map((x) => x.source), updatedAt: inPersonSyncedAt._max.syncedAt, definition: `${n(inPersonSales._count._all, "vendita di persona", "vendite di persona")} (SumUp a eventi e pop-up), IVA inclusa, al netto dei rimborsi. Non sono ordini Shopify: si aggiungono alle vendite online.`, href: "/payments?provider=sumup" },
     { key: "orders", label: "Ordini ricevuti", value: String(orders._count._all), format: "count", sources: srcOrders, updatedAt: sync.orders, definition: "Ordini nel periodo, esclusi annullati e test", href: "/orders" },
     { key: "captured", label: "Pagamenti acquisiti", value: D(captured._sum.amount).toFixed(2), format: "money", currency, sources: srcPayments.filter((s) => s === "SHOPIFY" || s === "DEMO"), updatedAt: sync.payments, definition: "Σ transazioni SALE/CAPTURE riuscite registrate sugli ordini (ledger ordini). Non si somma alle vendite.", href: "/payments" },
     { key: "fees", label: "Commissioni gateway", value: D(fees._sum.fee).toFixed(2), format: "money", currency, sources: srcPayments.filter((s) => s !== "SHOPIFY"), updatedAt: sync.payments, definition: "Σ commissioni dal ledger dei gateway (API o CSV)", href: "/payments" },
