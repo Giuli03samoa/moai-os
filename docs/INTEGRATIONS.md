@@ -105,6 +105,10 @@ Nessuna chiamata di scrittura (checkout, pagamenti, rimborsi) è implementata: i
 - **Fisco**: SumUp non emette scontrini né conosce i dati del cliente. Il documento commerciale (procedura web
   dell'Agenzia delle Entrate o registratore telematico) o la fattura entro 12 giorni restano fuori da MOAI OS,
   che non automatizza nulla di fiscale.
+- **Pagina Scontrini** (`/receipts`): elenca gli incassi di persona riusciti, per giorno, con totale, imponibile e IVA
+  (quella comunicata da SumUp, altrimenti scorporo al 22%). L'utente emette il documento a mano sul portale e qui lo
+  spunta come fatto (`fiscalDocKind`/`fiscalDocRef`/`fiscalDocAt`, con audit `receipt.marked`). È solo un promemoria:
+  nessuna chiamata all'Agenzia, nessuna compilazione automatica del portale. I rimborsi non sono in elenco.
 
 ### Import CSV (Payments → Importa CSV)
 Mapping JSON configurabile: colonne, separatore decimale, formato data, fuso, dizionari valori (`valueMaps`), righe da ignorare (`skipWhen`). Preset inclusi:

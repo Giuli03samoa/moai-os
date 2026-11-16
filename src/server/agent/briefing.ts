@@ -7,6 +7,7 @@ import { isAgentConfigured } from "./config";
 import { completeOnce } from "./engine";
 import { BRIEFING_SYSTEM } from "./prompt";
 import { notifyBriefing } from "../notify";
+import { pendingReceiptsWhere } from "../receipts/receipts";
 
 /**
  * Daily briefing. Facts are gathered from the database; the text is written by Claude when the
@@ -27,7 +28,7 @@ export async function buildBriefingData(organizationId: string) {
   const rMtd = resolvePeriod({ period: "mtd" }, tz);
   const rLastMonth = resolvePeriod({ period: "last_month" }, tz);
   const pick = (ms: Awaited<ReturnType<typeof getDashboardMetrics>>) => Object.fromEntries(ms.filter((m) => ["gross", "net", "inPerson", "orders", "toShip", "unreconciled", "invoicesReceived"].includes(m.key)).map((m) => [m.key, { label: m.label, value: m.value, currency: m.currency, sources: m.sources, updatedAt: m.updatedAt }]));
-  const [mY, mMtd, mLast, alerts, tasks, approvals, connections, deadJobs, marketing, memories] = await Promise.all([
+  const [mY, mMtd, mLast, alerts, tasks, approvals, connections, deadJobs, marketing, memories, receipts] = await Promise.all([
     getDashboardMetrics(organizationId, rYesterday, org.baseCurrency),
     getDashboardMetrics(organizationId, rMtd, org.baseCurrency),
     getDashboardMetrics(organizationId, rLastMonth, org.baseCurrency),
@@ -38,6 +39,7 @@ export async function buildBriefingData(organizationId: string) {
     db.syncJob.count({ where: { organizationId, status: "DEAD" } }),
     db.marketingSnapshot.findMany({ where: { organizationId, date: { gte: localDate(tz, new Date(Date.now() - 7 * 86_400_000)) } }, orderBy: { date: "desc" }, take: 40, select: { channel: true, date: true, metrics: true } }),
     db.agentMemory.findMany({ where: { organizationId, category: { in: ["business", "decision"] } }, take: 8, orderBy: { updatedAt: "desc" }, select: { key: true, content: true } }),
+    db.paymentTransaction.aggregate({ where: pendingReceiptsWhere(organizationId), _count: { _all: true }, _sum: { amount: true } }),
   ]);
   const latestByChannel: Record<string, unknown> = {};
   for (const m of marketing) if (!latestByChannel[m.channel]) latestByChannel[m.channel] = { date: m.date, ...(m.metrics as object) };
@@ -52,6 +54,7 @@ export async function buildBriefingData(organizationId: string) {
     pendingApprovals: approvals,
     integrations: connections,
     deadJobs,
+    receiptsToIssue: { count: receipts._count._all, amount: (receipts._sum.amount ?? 0).toString(), note: "Incassi di persona senza scontrino o fattura segnati come fatti: li emette l'utente sul portale dell'Agenzia, pagina /receipts" },
     marketingLatest: latestByChannel,
     businessContext: memories,
   };
@@ -74,6 +77,7 @@ export function renderRuleBriefing(d: Awaited<ReturnType<typeof buildBriefingDat
     `| Ordini | ${m(y, "orders")} | ${m(mtd, "orders")} | ${m(last, "orders")} |`,
     ...(Number(mtd.inPerson?.value ?? 0) || Number(last.inPerson?.value ?? 0) || Number(y.inPerson?.value ?? 0) ? [`| Vendite in presenza | ${m(y, "inPerson")} | ${m(mtd, "inPerson")} | ${m(last, "inPerson")} |`] : []),
     `| Da spedire | ${m(mtd, "toShip")} | | |`,
+    ...(d.receiptsToIssue.count ? [`| Scontrini da fare | ${d.receiptsToIssue.count} | | |`] : []),
     `| Non riconciliate | ${m(mtd, "unreconciled")} | | |`,
     "",
     "## Da fare oggi",

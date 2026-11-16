@@ -566,6 +566,10 @@ model PaymentTransaction {
   payoutExternalId           String?
   orderTransactionExternalId String? // for PROCESSOR rows: the matching ORDER-ledger transaction, when the source says so
   inPerson                   Boolean          @default(false) // sold face to face (POS at an event): no online order exists, never matched to one
+  // Fiscal document for an in-person sale. Issued by hand outside MOAI OS (AdE portal or invoice): here it is only ticked off.
+  fiscalDocKind              String? // RECEIPT (documento commerciale) | INVOICE
+  fiscalDocRef               String? // document number as printed, optional
+  fiscalDocAt                DateTime? // when it was ticked off
   importBatchId              String?
   raw                        Json?
   syncedAt                   DateTime         @default(now())

@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bell, Bot, CheckSquare, CreditCard, Factory, FileText, LayoutDashboard, Megaphone, Package, PenTool, Plug, Settings, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Bell, Bot, CheckSquare, CreditCard, Factory, FileText, LayoutDashboard, Megaphone, Package, PenTool, Plug, ReceiptText, Settings, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
 import type { NavIcon } from "./nav-items";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
@@ -8,6 +8,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   tasks: CheckSquare,
   orders: ShoppingBag,
   payments: CreditCard,
+  receipts: ReceiptText,
   invoices: FileText,
   shipping: Truck,
   products: Package,

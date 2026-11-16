@@ -1,5 +1,5 @@
 // Plain data shared by server and client components (icons are resolved client-side by name).
-export type NavIcon = "overview" | "assistant" | "alerts" | "tasks" | "orders" | "payments" | "invoices" | "shipping" | "products" | "production" | "design" | "marketing" | "analytics" | "integrations" | "sync" | "settings";
+export type NavIcon = "overview" | "assistant" | "alerts" | "tasks" | "orders" | "payments" | "receipts" | "invoices" | "shipping" | "products" | "production" | "design" | "marketing" | "analytics" | "integrations" | "sync" | "settings";
 export type NavItem = { href: string; label: string; icon: NavIcon; hint: string; keywords?: string; searchable?: boolean };
 export type NavSection = { title: string; items: readonly NavItem[] };
 
@@ -18,6 +18,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     items: [
       { href: "/orders", label: "Ordini", icon: "orders", hint: "Ordini Shopify e stato", keywords: "vendite clienti shopify", searchable: true },
       { href: "/payments", label: "Pagamenti", icon: "payments", hint: "Incassi, accrediti, banca", keywords: "paypal stripe shopify payments payout banca riconciliazione", searchable: true },
+      { href: "/receipts", label: "Scontrini", icon: "receipts", hint: "Incassi di persona da certificare", keywords: "scontrino documento commerciale sumup evento corrispettivi pos" },
       { href: "/invoices", label: "Fatture", icon: "invoices", hint: "Archivio fatture attive e passive", keywords: "fattura xml sdi fornitori cassetto", searchable: true },
       { href: "/shipping", label: "Spedizioni", icon: "shipping", hint: "Packlink e tracking", keywords: "packlink corriere tracking", searchable: true },
       { href: "/products", label: "Prodotti", icon: "products", hint: "Catalogo e giacenze", keywords: "catalogo varianti magazzino scorte", searchable: true },

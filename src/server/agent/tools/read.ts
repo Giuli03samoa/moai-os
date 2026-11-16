@@ -116,7 +116,7 @@ export const getOrder = defineTool({
 
 export const listPayments = defineTool({
   name: "list_payments",
-  description: "Transazioni di pagamento. ledger ORDER = registrate dal negozio; PROCESSOR = ledger del gateway (commissioni, netto, payout). provider \"sumup\" = vendite in presenza a eventi (inPerson: true, senza ordine Shopify, con i prodotti venduti se registrati nel catalogo SumUp). unreconciledOnly mostra transazioni gateway online senza corrispondenza confermata.",
+  description: "Transazioni di pagamento. ledger ORDER = registrate dal negozio; PROCESSOR = ledger del gateway (commissioni, netto, payout). provider \"sumup\" = vendite in presenza a eventi (inPerson: true, senza ordine Shopify, con i prodotti venduti se registrati nel catalogo SumUp; fiscalDoc dice se lo scontrino o la fattura è stato segnato come fatto dall'utente nella pagina Scontrini, null = ancora da fare). unreconciledOnly mostra transazioni gateway online senza corrispondenza confermata.",
   schema: z.object({ ledger: z.enum(["ORDER", "PROCESSOR"]).optional(), provider: z.string().max(40).optional(), unreconciledOnly: z.boolean().optional(), period: PERIOD.optional(), from: DATE.optional(), to: DATE.optional(), limit: LIMIT }),
   risk: "read",
   minRole: "VIEWER",
@@ -133,7 +133,7 @@ export const listPayments = defineTool({
       db.paymentTransaction.count({ where }),
       db.paymentTransaction.aggregate({ where, _sum: { amount: true, fee: true, net: true } }),
     ]);
-    return plain({ total, sums: sums._sum, transactions: rows.map((t) => ({ id: t.id, ledger: t.ledger, provider: t.provider, kind: t.kind, status: t.status, inPerson: t.inPerson, method: t.gateway, products: t.inPerson ? ((t.raw as { products?: unknown } | null)?.products ?? null) : undefined, amount: t.amount, fee: t.fee, net: t.net, currency: t.currency, processedAt: t.processedAt, order: t.order?.name ?? null, orderRef: t.orderRef, payout: t.payout, source: t.source, isDemo: t.isDemo })) });
+    return plain({ total, sums: sums._sum, transactions: rows.map((t) => ({ id: t.id, ledger: t.ledger, provider: t.provider, kind: t.kind, status: t.status, inPerson: t.inPerson, method: t.gateway, products: t.inPerson ? ((t.raw as { products?: unknown } | null)?.products ?? null) : undefined, fiscalDoc: t.inPerson && t.kind === "SALE" ? (t.fiscalDocAt ? { kind: t.fiscalDocKind, ref: t.fiscalDocRef, markedAt: t.fiscalDocAt } : null) : undefined, amount: t.amount, fee: t.fee, net: t.net, currency: t.currency, processedAt: t.processedAt, order: t.order?.name ?? null, orderRef: t.orderRef, payout: t.payout, source: t.source, isDemo: t.isDemo })) });
   },
 });
 

@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, Bell, CheckCircle2, CheckSquare, Plug, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Bell, CheckCircle2, CheckSquare, Plug, ReceiptText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { requireAuth, hasRole } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { getDashboardMetrics } from "@/server/metrics/dashboard";
 import { isAgentConfigured } from "@/server/agent/config";
 import { localDate } from "@/server/agent/briefing";
+import { pendingReceiptsWhere } from "@/server/receipts/receipts";
 import { newConversationAction, regenerateBriefingAction } from "@/server/actions/agent";
 import { alertToTaskAction, setAlertStatusAction, setTaskStatusAction } from "@/server/actions/tasks";
 import { resolvePeriod } from "@/lib/periods";
-import { fmtDate, fmtRelative } from "@/lib/format";
+import { fmtDate, fmtMoney, fmtRelative } from "@/lib/format";
 import { ALERT_SEVERITY_LABEL, CONNECTION_STATUS_LABEL, JOB_STATUS_LABEL, TASK_PRIORITY_LABEL } from "@/lib/labels";
 import { JOB_LABELS } from "@/server/jobs/handlers";
 import { MetricCard } from "@/components/metric-card";
@@ -34,7 +35,7 @@ export default async function CockpitPage({ searchParams }: { searchParams: Prom
   const range = resolvePeriod(sp, auth.timezone);
   const orgId = auth.organizationId;
   const today = localDate(auth.timezone);
-  const [metrics, briefing, alerts, tasks, approvals, connections, recentJobs, lastMonitor] = await Promise.all([
+  const [metrics, briefing, alerts, tasks, approvals, connections, recentJobs, lastMonitor, receipts] = await Promise.all([
     getDashboardMetrics(orgId, range, auth.currency),
     db.briefing.findUnique({ where: { organizationId_date: { organizationId: orgId, date: today } } }),
     db.alert.findMany({ where: { organizationId: orgId, status: { in: ["OPEN", "ACKNOWLEDGED"] } }, orderBy: [{ severity: "desc" }, { lastSeenAt: "desc" }], take: 8 }),
@@ -43,6 +44,7 @@ export default async function CockpitPage({ searchParams }: { searchParams: Prom
     db.integrationConnection.findMany({ where: { organizationId: orgId }, orderBy: { displayName: "asc" } }),
     db.syncJob.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "desc" }, take: 5 }),
     db.syncJob.findFirst({ where: { organizationId: orgId, type: "agent.monitor", status: "SUCCEEDED" }, orderBy: { finishedAt: "desc" }, select: { finishedAt: true } }),
+    db.paymentTransaction.aggregate({ where: pendingReceiptsWhere(orgId), _count: { _all: true }, _sum: { amount: true } }),
   ]);
   const canAct = hasRole(auth.role, "OPERATIONS");
   const configured = isAgentConfigured();
@@ -86,6 +88,16 @@ export default async function CockpitPage({ searchParams }: { searchParams: Prom
         <StatusTile href="/assistant/approvals" icon={<ShieldCheck className="h-4 w-4" strokeWidth={1.75} />} label="Da approvare" value={approvals} tone={approvals ? "warn" : "ok"} note={approvals ? "aspettano te" : "niente in sospeso"} />
         <StatusTile href="/integrations" icon={<Plug className="h-4 w-4" strokeWidth={1.75} />} label="Collegamenti attivi" value={connected} tone={connections.some((c) => c.status === "ERROR") ? "bad" : "ok"} note={`su ${connections.length} configurati`} />
       </section>
+      {receipts._count._all ? (
+        <Link href="/receipts" className="surface group mt-3 flex items-center gap-3.5 rounded-[18px] border border-[var(--hairline)] p-4 transition-transform duration-200 hover:-translate-y-0.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warn-bg text-warn"><ReceiptText className="h-4 w-4" strokeWidth={1.75} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{receipts._count._all === 1 ? "1 scontrino da fare" : `${receipts._count._all} scontrini da fare`}</span>
+            <span className="block truncate text-xs text-graphite">Incassi di persona per {fmtMoney(String(receipts._sum.amount ?? 0), auth.currency)} senza documento segnato</span>
+          </span>
+          <ArrowRight className="h-4 w-4 text-graphite transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      ) : null}
 
       {/* Briefing + work */}
       <section className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
