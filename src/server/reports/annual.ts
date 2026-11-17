@@ -21,7 +21,7 @@ export const COST_LABEL: Record<ExpenseCategory, string> = {
   FEES: "Commissioni e canoni POS",
   PHOTOGRAPHY: "Foto e video",
   CONSULTING: "Notaio, marchio e consulenze",
-  OTHER: "Altro",
+  OTHER: "Rimborsi spese e altro",
 };
 
 export type MonthRow = { month: number; revenue: string; costs: string; cashIn: string; cashOut: string };
