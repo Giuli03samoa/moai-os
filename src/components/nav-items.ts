@@ -1,5 +1,5 @@
 // Plain data shared by server and client components (icons are resolved client-side by name).
-export type NavIcon = "overview" | "assistant" | "alerts" | "tasks" | "orders" | "payments" | "receipts" | "invoices" | "shipping" | "products" | "production" | "design" | "marketing" | "analytics" | "integrations" | "sync" | "settings";
+export type NavIcon = "overview" | "assistant" | "alerts" | "tasks" | "orders" | "payments" | "receipts" | "invoices" | "shipping" | "products" | "production" | "balance" | "design" | "marketing" | "analytics" | "integrations" | "sync" | "settings";
 export type NavItem = { href: string; label: string; icon: NavIcon; hint: string; keywords?: string; searchable?: boolean };
 export type NavSection = { title: string; items: readonly NavItem[] };
 
@@ -23,6 +23,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { href: "/shipping", label: "Spedizioni", icon: "shipping", hint: "Packlink e tracking", keywords: "packlink corriere tracking", searchable: true },
       { href: "/products", label: "Prodotti", icon: "products", hint: "Catalogo e giacenze", keywords: "catalogo varianti magazzino scorte", searchable: true },
       { href: "/production", label: "Produzione e costi", icon: "production", hint: "Fornitori, ordini di produzione, spese", keywords: "fornitori costi margine spese studio 33" },
+      { href: "/bilancio", label: "Bilancio", icon: "balance", hint: "Ricavi, costi e cassa dell'anno", keywords: "bilancio anno conto economico utile perdita iva cassa entrate uscite" },
     ],
   },
   {

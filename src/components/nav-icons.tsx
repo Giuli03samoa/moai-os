@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bell, Bot, CheckSquare, CreditCard, Factory, FileText, LayoutDashboard, Megaphone, Package, PenTool, Plug, ReceiptText, Settings, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Bell, Bot, CheckSquare, CreditCard, Factory, FileText, LayoutDashboard, Megaphone, Package, PenTool, PiggyBank, Plug, ReceiptText, Settings, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
 import type { NavIcon } from "./nav-items";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
@@ -13,6 +13,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   shipping: Truck,
   products: Package,
   production: Factory,
+  balance: PiggyBank,
   design: PenTool,
   marketing: Megaphone,
   analytics: BarChart3,

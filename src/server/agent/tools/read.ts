@@ -531,8 +531,22 @@ export const listGarments = defineTool({
   },
 });
 
+export const getAnnualReport = defineTool({
+  name: "get_annual_report",
+  description: "Bilancio gestionale di un anno solare (pagina Bilancio): ricavi IVA esclusa (online Shopify e in presenza SumUp), costi IVA esclusa per categoria (dalle spese e fatture), risultato, cassa IVA inclusa (accrediti e fatture pagate), IVA stimata, mese per mese e cosa manca (es. estratto conto). Non è il bilancio d'esercizio: niente rimanenze né ammortamenti, dillo sempre.",
+  schema: z.object({ year: z.number().int().min(2024).max(2100).optional().describe("Anno, default quello in corso") }),
+  risk: "read",
+  minRole: "VIEWER",
+  summarize: (i) => `Bilancio ${i.year ?? "anno in corso"}`,
+  async run(ctx, input) {
+    const { annualReport } = await import("../../reports/annual");
+    const year = input.year ?? Number(new Intl.DateTimeFormat("en-US", { timeZone: ctx.timezone, year: "numeric" }).format(new Date()));
+    return plain(await annualReport(ctx.organizationId, year));
+  },
+});
+
 export const READ_TOOLS = [
   getBusinessOverview, getSalesTimeseries, searchOrders, getOrder, listPayments, listPayouts, listReconciliationItems, listInvoices, listShipments, listProducts, searchCustomers,
-  getIntegrationsStatus, listSyncJobs, listAlerts, listTasks, getMarketingOverview, listDesignProjects, getDesignProject, listProductionOrders, listGarments, listExpenses, getPnlEstimate,
+  getIntegrationsStatus, listSyncJobs, listAlerts, listTasks, getMarketingOverview, listDesignProjects, getDesignProject, listProductionOrders, listGarments, listExpenses, getPnlEstimate, getAnnualReport,
   searchMemory, listSkills, loadSkillTool, getAuditRecent,
 ];
