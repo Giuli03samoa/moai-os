@@ -23,7 +23,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { href: "/shipping", label: "Spedizioni", icon: "shipping", hint: "Packlink e tracking", keywords: "packlink corriere tracking", searchable: true },
       { href: "/products", label: "Prodotti", icon: "products", hint: "Catalogo e giacenze", keywords: "catalogo varianti magazzino scorte", searchable: true },
       { href: "/production", label: "Produzione e costi", icon: "production", hint: "Fornitori, ordini di produzione, spese", keywords: "fornitori costi margine spese studio 33" },
-      { href: "/bilancio", label: "Bilancio", icon: "balance", hint: "Ricavi, costi e cassa dell'anno", keywords: "bilancio anno conto economico utile perdita iva cassa entrate uscite" },
+      { href: "/bilancio", label: "Conti dell'anno", icon: "balance", hint: "Ogni ricavo e costo dell'anno, voce per voce", keywords: "bilancio anno conto economico utile perdita iva cassa entrate uscite" },
     ],
   },
   {

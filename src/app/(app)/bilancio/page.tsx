@@ -2,19 +2,34 @@ import Link from "next/link";
 import { Info } from "lucide-react";
 import { requireAuth } from "@/server/auth/session";
 import { annualReport } from "@/server/reports/annual";
+import { annualDetail, type AnnualDetail } from "@/server/reports/annual-detail";
+import { BankView, CostsView, RevenueView, SuppliersView } from "./detail-views";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Notice, PageHeader } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+const VIEWS = [{ key: "riepilogo", label: "Riepilogo" }, { key: "ricavi", label: "Ricavi" }, { key: "costi", label: "Costi" }, { key: "fornitori", label: "Fornitori" }, { key: "banca", label: "Banca" }] as const;
+
+/** Keeps only the items of one month (1-12) in the organization timezone. */
+function onlyMonth(d: AnnualDetail, month: number, tz: string): AnnualDetail {
+  const m = (x: Date) => Number(new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "numeric" }).format(x));
+  const revenue = d.revenue.filter((r) => m(r.date) === month);
+  const costs = d.costs.filter((c) => m(c.date) === month);
+  return { ...d, revenue, costs, bank: d.bank.filter((b) => m(b.date) === month), totals: { revenue: revenue.reduce((a, r) => a + Number(r.net), 0).toFixed(2), costs: costs.reduce((a, c) => a + Number(c.net), 0).toFixed(2) } };
+}
 
 export default async function BilancioPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
   const thisYear = Number(new Intl.DateTimeFormat("en-US", { timeZone: auth.timezone, year: "numeric" }).format(new Date()));
   const year = /^\d{4}$/.test(sp.anno ?? "") && Number(sp.anno) >= 2024 && Number(sp.anno) <= thisYear ? Number(sp.anno) : thisYear;
-  const r = await annualReport(auth.organizationId, year);
+  const vista = VIEWS.some((v) => v.key === sp.vista) ? sp.vista! : "riepilogo";
+  const mese = /^(1[0-2]|[1-9])$/.test(sp.mese ?? "") ? Number(sp.mese) : null;
+  const [r, full] = await Promise.all([annualReport(auth.organizationId, year), vista === "riepilogo" ? null : annualDetail(auth.organizationId, year)]);
+  const detail = full && mese ? onlyMonth(full, mese, auth.timezone) : full;
+  const qs = (patch: Record<string, string | null>) => { const p = new URLSearchParams({ anno: String(year), vista, ...(mese ? { mese: String(mese) } : {}) }); for (const [k, v] of Object.entries(patch)) { if (v === null) p.delete(k); else p.set(k, v); } return `/bilancio?${p}`; };
   const money = (v: string | number) => fmtMoney(String(v), r.currency);
   const result = Number(r.result);
   const maxMonth = Math.max(1, ...r.months.map((m) => Math.max(Number(m.revenue), Number(m.costs))));
@@ -24,12 +39,12 @@ export default async function BilancioPage({ searchParams }: { searchParams: Pro
     <div>
       <PageHeader
         eyebrow="Conti dell'anno"
-        title={`Bilancio ${year}`}
-        subtitle="Quanto hai incassato, quanto hai speso e cosa resta, da fatture, SumUp, Shopify e spese registrate. È una vista gestionale per orientarti: il bilancio ufficiale lo fa il commercialista."
+        title={`Conti ${year}`}
+        subtitle="Ogni euro entrato e uscito nell'anno, voce per voce: fatture, SumUp, Shopify, banca e spese. Una vista per orientarti, non il bilancio ufficiale (quello lo fa il commercialista)."
         actions={
           <div className="flex items-center gap-1 rounded-full bg-cloud p-1">
             {Array.from({ length: thisYear - 2024 + 1 }, (_, i) => 2024 + i).reverse().slice(0, 3).map((y) => (
-              <Link key={y} href={`/bilancio?anno=${y}`} className={cn("rounded-full px-3 py-1 text-xs", y === year ? "bg-blackout text-crocus" : "text-graphite hover:text-blackout")}>{y}</Link>
+              <Link key={y} href={`/bilancio?anno=${y}&vista=${vista}`} className={cn("rounded-full px-3 py-1 text-xs", y === year ? "bg-blackout text-crocus" : "text-graphite hover:text-blackout")}>{y}</Link>
             ))}
           </div>
         }
@@ -45,6 +60,24 @@ export default async function BilancioPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex w-fit flex-wrap gap-1 rounded-full bg-cloud p-1">
+          {VIEWS.map((v) => <Link key={v.key} href={qs({ vista: v.key })} className={cn("rounded-full px-3 py-1 text-xs", vista === v.key ? "bg-blackout text-crocus" : "text-graphite hover:text-blackout")}>{v.label}</Link>)}
+        </div>
+        <Button asChild size="sm" variant="ghost"><a href={`/api/export/conti?anno=${year}`}>Scarica tutto (CSV per il commercialista)</a></Button>
+      </div>
+      {vista !== "riepilogo" ? (
+        <div className="mb-5 flex flex-wrap items-center gap-1 text-xs">
+          <Link href={qs({ mese: null })} className={cn("rounded-full px-2.5 py-1", !mese ? "bg-blackout text-crocus" : "text-graphite hover:bg-cloud hover:text-blackout")}>Tutto l&apos;anno</Link>
+          {MONTHS.slice(0, lastMonth).map((m, i) => <Link key={m} href={qs({ mese: String(i + 1) })} className={cn("rounded-full px-2.5 py-1", mese === i + 1 ? "bg-blackout text-crocus" : "text-graphite hover:bg-cloud hover:text-blackout")}>{m}</Link>)}
+        </div>
+      ) : null}
+      {detail && vista === "ricavi" ? <RevenueView d={detail} tz={auth.timezone} currency={r.currency} /> : null}
+      {detail && vista === "costi" ? <CostsView d={detail} tz={auth.timezone} currency={r.currency} /> : null}
+      {detail && vista === "fornitori" ? <SuppliersView d={detail} tz={auth.timezone} currency={r.currency} /> : null}
+      {detail && vista === "banca" ? <BankView d={detail} tz={auth.timezone} currency={r.currency} /> : null}
+
+      {vista === "riepilogo" ? (<>
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Ricavi</CardTitle><CardDescription>Vendite dell&apos;anno, IVA esclusa.</CardDescription></CardHeader>
@@ -132,6 +165,7 @@ export default async function BilancioPage({ searchParams }: { searchParams: Pro
         </CardContent>
       </Card>
       {result < 0 ? <Notice tone="muted">Il primo anno di un marchio è quasi sempre in perdita: la produzione si paga prima di vendere. Guarda quanto della spesa è merce ancora da vendere.</Notice> : null}
+      </>) : null}
     </div>
   );
 }
