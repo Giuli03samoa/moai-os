@@ -18,7 +18,7 @@ export type CostInput = {
   developmentCost: Prisma.Decimal | number | string | null;
   lotSize: number | null;
   extraCost: Prisma.Decimal | number | string | null;
-  components: Array<{ id?: string; role?: string | null; qtyPerUnit: Prisma.Decimal | number | string | null; estimated: boolean; material: { name: string; variant?: string | null; unit: string; unitPrice: Prisma.Decimal | number | string | null } }>;
+  components: Array<{ id?: string; role?: string | null; qtyPerUnit: Prisma.Decimal | number | string | null; estimated: boolean; material: { name: string; variant?: string | null; unit: string; unitPrice: Prisma.Decimal | number | string | null; kind?: MaterialKind } }>;
 };
 
 export type CostLine = { id?: string; label: string; role: string | null; qty: string | null; unit: string; unitPrice: string | null; cost: string | null; estimated: boolean };
@@ -34,6 +34,7 @@ export type GarmentCost = {
   missing: number; // components without quantity or price: the totals are too low
   estimated: boolean; // at least one quantity not confirmed by the maker
   noSewing: boolean;
+  noFabric: boolean; // no fabric in the bill of materials: the main cost is missing
 };
 
 /** Cost of one piece. Unknown pieces are left out of the totals and counted in `missing`, never guessed. */
@@ -67,6 +68,7 @@ export function garmentCost(input: CostInput): GarmentCost {
     missing,
     estimated,
     noSewing: !sewing,
+    noFabric: !input.components.some((c) => c.material.kind === "FABRIC"),
   };
 }
 

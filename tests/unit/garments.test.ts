@@ -22,6 +22,8 @@ describe("garmentCost", () => {
     expect(c.restock).toBe("34.87");
     expect(c.missing).toBe(0);
     expect(c.estimated).toBe(true);
+    expect(c.noFabric).toBe(true); // test materials carry no kind
+    expect(garmentCost({ sewingCost: 1, developmentCost: null, lotSize: null, extraCost: null, components: [{ qtyPerUnit: 1, estimated: false, material: { ...mat(2), kind: "FABRIC" } }] }).noFabric).toBe(false);
   });
 
   it("never guesses: unknown consumption or price is counted as missing and left out", () => {

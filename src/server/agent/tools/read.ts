@@ -517,7 +517,7 @@ export const listGarments = defineTool({
       currency: ctx.currency,
       garments: garments.map((g) => {
         const s = summarizeGarment(g);
-        return { id: g.id, name: g.name, product: g.product?.title ?? null, modelCode: g.modelCode, maker: g.maker?.name ?? null, composition: g.composition, sewingCost: g.sewingCost, developmentCost: g.developmentCost, firstLotSize: g.lotSize, extraCost: g.extraCost, extraCostNote: g.extraCostNote, notes: g.notes, components: s.cost.lines, costPerPieceFirstLot: s.cost.firstLot, costPerPieceRestock: s.cost.restock, componentsWithoutCost: s.cost.missing, consumptionEstimated: s.cost.estimated, shopPriceInclVat: s.price, marginFirstLot: s.marginFirst, marginRestock: s.marginRestock, lots: g.productionOrders };
+        return { id: g.id, name: g.name, product: g.product?.title ?? null, modelCode: g.modelCode, maker: g.maker?.name ?? null, composition: g.composition, sewingCost: g.sewingCost, developmentCost: g.developmentCost, firstLotSize: g.lotSize, extraCost: g.extraCost, extraCostNote: g.extraCostNote, notes: g.notes, components: s.cost.lines, costPerPieceFirstLot: s.cost.firstLot, costPerPieceRestock: s.cost.restock, componentsWithoutCost: s.cost.missing, fabricMissing: s.cost.noFabric, consumptionEstimated: s.cost.estimated, shopPriceInclVat: s.price, marginFirstLot: s.marginFirst, marginRestock: s.marginRestock, lots: g.productionOrders };
       }),
     };
     if (input.includeMaterials) {

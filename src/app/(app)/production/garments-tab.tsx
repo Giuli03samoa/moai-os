@@ -27,7 +27,7 @@ export async function GarmentsTab({ orgId, currency, canEdit }: { orgId: string;
           {garments.map((g) => {
             const { cost, price, marginFirst, marginRestock } = summarizeGarment(g);
             const lot = g.productionOrders[0];
-            const status = cost.missing || cost.noSewing ? { tone: "bad" as const, label: "dati mancanti" } : cost.estimated ? { tone: "warn" as const, label: "consumi stimati" } : { tone: "ok" as const, label: "costi confermati" };
+            const status = cost.missing || cost.noSewing || cost.noFabric ? { tone: "bad" as const, label: "dati mancanti" } : cost.estimated ? { tone: "warn" as const, label: "consumi stimati" } : { tone: "ok" as const, label: "costi confermati" };
             return (
               <Card key={g.id} className="group flex flex-col overflow-hidden">
                 <Link href={`/production/garments/${g.id}`} className="flex items-start justify-between gap-3 p-5 pb-3">

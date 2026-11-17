@@ -51,7 +51,7 @@ export default async function GarmentPage({ params, searchParams }: { params: Pr
           <Card key={l}><div className="p-4"><p className="text-xs text-graphite">{l}</p><p className="mt-1 text-2xl font-medium tracking-[-0.03em] tabular">{v}</p><p className="mt-0.5 text-[11px] text-space">{n}</p></div></Card>
         ))}
       </div>
-      {cost.missing || cost.noSewing ? <div className="mb-6"><Notice tone="warn">Il costo è incompleto: {[cost.noSewing ? "manca il costo di confezione" : null, cost.missing ? `${cost.missing === 1 ? "un materiale" : `${cost.missing} materiali`} senza consumo o prezzo` : null].filter(Boolean).join(" e ")}. I totali qui sopra sono più bassi del vero.</Notice></div> : cost.estimated ? <div className="mb-6"><Notice tone="muted">Alcuni consumi sono stimati (segnati con ~): chiedi i metri per capo al confezionista e spunta «confermato».</Notice></div> : null}
+      {cost.missing || cost.noSewing || cost.noFabric ? <div className="mb-6"><Notice tone="warn">Il costo è incompleto: {[cost.noFabric ? "manca il tessuto" : null, cost.noSewing ? "manca il costo di confezione" : null, cost.missing ? `${cost.missing === 1 ? "un materiale" : `${cost.missing} materiali`} senza consumo o prezzo` : null].filter(Boolean).join(" e ")}. I totali qui sopra sono più bassi del vero.</Notice></div> : cost.estimated ? <div className="mb-6"><Notice tone="muted">Alcuni consumi sono stimati (segnati con ~): chiedi i metri per capo al confezionista e spunta «confermato».</Notice></div> : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex flex-col gap-6">
