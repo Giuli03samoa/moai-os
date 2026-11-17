@@ -169,7 +169,7 @@ export const listReconciliationItems = defineTool({
 
 export const listInvoices = defineTool({
   name: "list_invoices",
-  description: "Fatture elettroniche archiviate: emesse (ACTIVE) o ricevute (PASSIVE), stato pagamento, scadenze. dueWithinDays filtra le non pagate in scadenza; overdueOnly le scadute.",
+  description: "Fatture elettroniche archiviate: emesse (ACTIVE) o ricevute (PASSIVE), stato pagamento, scadenze. dueWithinDays filtra le non pagate in scadenza; overdueOnly le scadute. paymentToConfirm: true = fattura importata quando era già scaduta, di cui l'utente non ha ancora detto se è pagata: non chiamarla scaduta, chiedigli se l'ha pagata (la conferma si dà nella pagina Fatture).",
   schema: z.object({ direction: z.enum(["ACTIVE", "PASSIVE"]).optional(), paymentStatus: z.enum(["UNKNOWN", "UNPAID", "PARTIAL", "PAID"]).optional(), dueWithinDays: z.number().int().min(0).max(365).optional(), overdueOnly: z.boolean().optional(), period: PERIOD.optional(), from: DATE.optional(), to: DATE.optional(), limit: LIMIT }),
   risk: "read",
   minRole: "VIEWER",
@@ -178,7 +178,7 @@ export const listInvoices = defineTool({
     const now = new Date();
     const unpaid: Prisma.InvoiceWhereInput["paymentStatus"] = { in: ["UNPAID", "PARTIAL", "UNKNOWN"] };
     const dueFilter: Prisma.InvoiceWhereInput = input.overdueOnly
-      ? { paymentStatus: unpaid, nextDueDate: { lt: now } }
+      ? { paymentStatus: unpaid, paymentToConfirm: false, nextDueDate: { lt: now } }
       : input.dueWithinDays !== undefined
         ? { paymentStatus: unpaid, nextDueDate: { gte: now, lte: new Date(now.getTime() + input.dueWithinDays * 86_400_000) } }
         : {};
@@ -192,7 +192,7 @@ export const listInvoices = defineTool({
         db.invoice.aggregate({ where: { AND: [where, { documentType: { in: CREDIT_NOTE_TYPES } }] }, _sum: { totalAmount: true } }),
       ]).then(([docs, credits]) => new Prisma.Decimal(docs._sum.totalAmount ?? 0).minus(credits._sum.totalAmount ?? 0)),
     ]);
-    return plain({ total, sumTotal: sum, sumNote: "IVA inclusa, al netto delle note di credito (TD04/TD08)", invoices: rows.map((i) => ({ id: i.id, direction: i.direction, documentType: i.documentType, creditNote: isCreditNote(i.documentType), number: i.number, issueDate: i.issueDate, total: i.totalAmount, taxable: i.taxableAmount, tax: i.taxAmount, currency: i.currency, counterparty: i.direction === "ACTIVE" ? i.receiverName : i.senderName, paymentStatus: i.paymentStatus, nextDueDate: i.nextDueDate, installments: i.installments, order: i.order?.name ?? null, sdiStatus: i.sdiStatus, source: i.source, isDemo: i.isDemo })) });
+    return plain({ total, sumTotal: sum, sumNote: "IVA inclusa, al netto delle note di credito (TD04/TD08)", invoices: rows.map((i) => ({ id: i.id, paymentToConfirm: i.paymentToConfirm, direction: i.direction, documentType: i.documentType, creditNote: isCreditNote(i.documentType), number: i.number, issueDate: i.issueDate, total: i.totalAmount, taxable: i.taxableAmount, tax: i.taxAmount, currency: i.currency, counterparty: i.direction === "ACTIVE" ? i.receiverName : i.senderName, paymentStatus: i.paymentStatus, nextDueDate: i.nextDueDate, installments: i.installments, order: i.order?.name ?? null, sdiStatus: i.sdiStatus, source: i.source, isDemo: i.isDemo })) });
   },
 });
 

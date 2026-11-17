@@ -32,6 +32,18 @@ export function classifyDirection(org: { vatNumber: string | null; fiscalCode: s
   return null;
 }
 
+/**
+ * A received invoice that arrives already past due (typically an old one found in the cassetto fiscale) is not
+ * "overdue": nobody knows yet whether it was paid. It waits for the user's answer instead of raising an alert.
+ */
+export function needsPaymentConfirmation(inv: { issueDate: Date; installments: Array<{ dueDate: Date | null }> }, now = new Date()) {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const dues = inv.installments.map((i) => i.dueDate).filter((d): d is Date => !!d);
+  if (dues.length) return dues.some((d) => d < startOfToday);
+  return inv.issueDate.getTime() < now.getTime() - 30 * 86_400_000;
+}
+
 export function invoiceDedupeKey(direction: InvoiceDirection, parsed: ParsedFile, inv: ParsedInvoice) {
   const senderId = normalizeVat(parsed.sender.vat) ?? parsed.sender.fiscalCode ?? parsed.sender.name;
   return [direction, senderId, inv.documentType, inv.number.toUpperCase(), inv.issueDate.toISOString().slice(0, 10)].join(":");
@@ -110,7 +122,7 @@ export async function ingestInvoiceFile(args: {
       const invoice = existing
         ? await tx.invoice.update({ where: { id: existing.id }, data: { ...data, deletedAt: null, syncedAt: new Date() } })
         : await tx.invoice.create({
-            data: { ...data, organizationId: args.organizationId, source: args.source, dedupeKey, isDemo: args.isDemo ?? false },
+            data: { ...data, organizationId: args.organizationId, source: args.source, dedupeKey, isDemo: args.isDemo ?? false, paymentToConfirm: direction === "PASSIVE" && !args.isDemo && needsPaymentConfirmation(inv) },
           });
       await tx.invoiceLine.deleteMany({ where: { invoiceId: invoice.id } });
       if (inv.lines.length) {

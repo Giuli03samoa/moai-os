@@ -673,6 +673,7 @@ model Invoice {
   sdiStatus          String?
   sdiStatusCode      Int?
   paymentStatus      InvoicePaymentStatus @default(UNKNOWN)
+  paymentToConfirm   Boolean            @default(false) // imported already past due: the user must say whether it is paid before any overdue alert
   nextDueDate        DateTime?
   orderId            String?
   documentId         String?

@@ -45,3 +45,37 @@ describe("invoice archive", () => {
     await expect(ingestInvoiceFile({ organizationId: org.id, filename: "x.xml", content: fx("fatturapa-active.xml"), source: "XML_UPLOAD" })).rejects.toThrow(/P.IVA/);
   });
 });
+
+describe("invoices imported already past due", () => {
+  it("wait for the user's answer instead of raising a critical overdue alert", async () => {
+    const { needsPaymentConfirmation } = await import("@/server/invoices/archive");
+    const { collectSnapshot, computeAlerts } = await import("@/server/agent/monitor");
+    const org = await makeOrg("01234567890");
+    // The passive fixture's installments fall due on 30/10 and 29/11/2026; evaluate as if imported after both.
+    const later = new Date("2027-01-15T10:00:00Z");
+    expect(needsPaymentConfirmation({ issueDate: new Date("2026-10-01"), installments: [{ dueDate: new Date("2026-10-30") }] }, later)).toBe(true);
+    expect(needsPaymentConfirmation({ issueDate: new Date("2026-10-01"), installments: [{ dueDate: new Date("2027-02-01") }] }, later)).toBe(false);
+    expect(needsPaymentConfirmation({ issueDate: new Date("2026-12-20"), installments: [] }, later)).toBe(false);
+    expect(needsPaymentConfirmation({ issueDate: new Date("2026-11-01"), installments: [] }, later)).toBe(true);
+
+    const p = await ingestInvoiceFile({ organizationId: org.id, filename: "IT09876543210_778.xml", content: fx("fatturapa-passive.xml"), source: "XML_UPLOAD" });
+    const id = p.invoices[0]!.id;
+    // Force the "arrived late" situation regardless of today's date.
+    await db.invoice.update({ where: { id }, data: { paymentToConfirm: true, nextDueDate: new Date("2026-10-30") } });
+
+    let alerts = computeAlerts(await collectSnapshot(org.id));
+    expect(alerts.find((a) => a.kind === "invoices.overdue")).toBeUndefined();
+    const ask = alerts.find((a) => a.kind === "invoices.to_confirm");
+    expect(ask?.severity).toBe("WARNING"); // never CRITICAL, never emailed
+
+    // Re-importing the same file does not clear the question.
+    await ingestInvoiceFile({ organizationId: org.id, filename: "copia.xml", content: fx("fatturapa-passive.xml"), source: "XML_UPLOAD" });
+    expect((await db.invoice.findUniqueOrThrow({ where: { id } })).paymentToConfirm).toBe(true);
+
+    // Answer "to pay": it becomes an ordinary overdue invoice again.
+    await db.invoice.update({ where: { id }, data: { paymentToConfirm: false } });
+    alerts = computeAlerts(await collectSnapshot(org.id));
+    expect(alerts.find((a) => a.kind === "invoices.overdue")?.severity).toBe("CRITICAL");
+    expect(alerts.find((a) => a.kind === "invoices.to_confirm")).toBeUndefined();
+  });
+});

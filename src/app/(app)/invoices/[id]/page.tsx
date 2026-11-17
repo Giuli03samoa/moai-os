@@ -22,7 +22,7 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
         actions={<>{inv.document ? <Button asChild variant="outline" size="sm"><a href={`/api/documents/${inv.document.id}`}>Scarica {inv.document.kind === "INVOICE_P7M" ? "P7M" : "XML"}</a></Button> : null}<Button asChild variant="ghost" size="sm"><Link href="/invoices">← Fatture</Link></Button></>} />
       {inv.parseWarnings.length ? <div className="mb-4 flex flex-col gap-2">{inv.parseWarnings.map((w, i) => <Notice key={i} tone="warn">{w}</Notice>)}</div> : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[["Totale documento", money(inv.totalAmount)], ["Imponibile", money(inv.taxableAmount)], ["Imposta", money(inv.taxAmount)], ["Pagamento", INVOICE_PAYMENT_LABEL[inv.paymentStatus]], ["Stato SdI", inv.sdiStatus ?? "—"], ["Prossima scadenza", fmtDate(inv.nextDueDate, auth.timezone)], ["Formato/file", inv.filename ?? "—"], ["Ordine collegato", inv.order ? inv.order.name : "—"]].map(([l, v]) => (
+        {[["Totale documento", money(inv.totalAmount)], ["Imponibile", money(inv.taxableAmount)], ["Imposta", money(inv.taxAmount)], ["Pagamento", inv.paymentToConfirm ? "Da confermare (importata già scaduta)" : INVOICE_PAYMENT_LABEL[inv.paymentStatus]], ["Stato SdI", inv.sdiStatus ?? "—"], ["Prossima scadenza", fmtDate(inv.nextDueDate, auth.timezone)], ["Formato/file", inv.filename ?? "—"], ["Ordine collegato", inv.order ? inv.order.name : "—"]].map(([l, v]) => (
           <Card key={l}><div className="p-4"><p className="text-[11px] uppercase tracking-wide text-graphite">{l}</p><p className="mt-1 truncate text-lg font-medium tabular" title={String(v)}>{v}</p></div></Card>
         ))}
       </div>

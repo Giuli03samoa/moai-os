@@ -47,7 +47,36 @@ export async function setInstallmentPaidAction(formData: FormData) {
   if (!inst) redirect("/invoices");
   await db.invoiceInstallment.update({ where: { id }, data: { paidAt: paid ? new Date() : null } });
   await refreshInvoicePaymentStatus(inst.invoiceId);
+  // Marking an installment is an answer about the invoice: it no longer waits for confirmation.
+  await db.invoice.update({ where: { id: inst.invoiceId }, data: { paymentToConfirm: false } });
   await audit({ organizationId: auth.organizationId, userId: auth.userId, action: paid ? "invoice.installment_paid" : "invoice.installment_unpaid", entityType: "InvoiceInstallment", entityId: id });
   revalidatePath(`/invoices/${inst.invoiceId}`);
   redirect(`/invoices/${inst.invoiceId}`);
+}
+
+/**
+ * Answer for invoices imported already past due: "paid" (every open installment paid at its due date, or a single
+ * installment created when the file has none) or "to pay" (they become ordinary unpaid invoices, alerts included).
+ */
+export async function confirmInvoicePaymentAction(formData: FormData) {
+  const auth = await requireAuth("ACCOUNTANT");
+  const ids = formData.getAll("id").map(String).filter(Boolean).slice(0, 200);
+  const paid = formData.get("decision") === "paid";
+  const invoices = await db.invoice.findMany({ where: { id: { in: ids }, organizationId: auth.organizationId, paymentToConfirm: true }, include: { installments: true } });
+  for (const inv of invoices) {
+    if (paid) {
+      if (inv.installments.length === 0) {
+        await db.invoiceInstallment.create({ data: { organizationId: auth.organizationId, invoiceId: inv.id, position: 1, amount: inv.totalAmount, dueDate: inv.issueDate, paidAt: inv.issueDate } });
+      } else {
+        for (const r of inv.installments.filter((x) => !x.paidAt)) await db.invoiceInstallment.update({ where: { id: r.id }, data: { paidAt: r.dueDate ?? inv.issueDate } });
+      }
+      await refreshInvoicePaymentStatus(inv.id);
+    }
+    await db.invoice.update({ where: { id: inv.id }, data: { paymentToConfirm: false } });
+    await audit({ organizationId: auth.organizationId, userId: auth.userId, action: paid ? "invoice.confirmed_paid" : "invoice.confirmed_unpaid", entityType: "Invoice", entityId: inv.id, metadata: { number: inv.number, supplier: inv.senderName } });
+  }
+  revalidatePath("/invoices");
+  const n = invoices.length;
+  const msg = n === 0 ? "Nessuna fattura da confermare." : paid ? `${n === 1 ? "Fattura segnata" : `${n} fatture segnate`} come pagate.` : `${n === 1 ? "Fattura lasciata" : `${n} fatture lasciate`} da pagare: da ora contano nelle scadenze.`;
+  redirect(`/invoices?notice=${encodeURIComponent(msg)}`);
 }

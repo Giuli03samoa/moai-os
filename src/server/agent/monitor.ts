@@ -22,6 +22,7 @@ export type MonitorSnapshot = {
   suggestedReconciliations: number;
   invoicesDueSoon: Array<{ number: string; counterparty: string; dueDate: Date; amount: string }>;
   invoicesOverdue: Array<{ number: string; counterparty: string; dueDate: Date; amount: string }>;
+  invoicesToConfirm?: { count: number; amount: string };
   deadJobs: number;
   connections: Array<{ key: string; displayName: string; status: string; lastSyncAt: Date | null; lastError: string | null; blockedReason: string | null; scheduled: boolean }>;
   lowStock: Array<{ sku: string | null; title: string; qty: number }>;
@@ -50,6 +51,10 @@ export function computeAlerts(s: MonitorSnapshot): AlertCandidate[] {
   if (s.invoicesOverdue.length) {
     const total = s.invoicesOverdue.reduce((a, i) => a + Number(i.amount), 0);
     out.push({ dedupeKey: "invoices.overdue", kind: "invoices.overdue", severity: "CRITICAL", title: `${s.invoicesOverdue.length} fatture passive scadute e non segnate pagate (${fmt(total)} ${s.currency})`, body: s.invoicesOverdue.slice(0, 5).map((i) => `${i.counterparty} n. ${i.number} (${fmt(i.amount)})`).join("; "), href: "/invoices?direction=PASSIVE", data: { invoices: s.invoicesOverdue.slice(0, 20) } });
+  }
+  if (s.invoicesToConfirm?.count) {
+    // Never CRITICAL: it is a question for the user, not a missed payment, and it must not trigger an email.
+    out.push({ dedupeKey: "invoices.to_confirm", kind: "invoices.to_confirm", severity: "WARNING", title: `${s.invoicesToConfirm.count === 1 ? "1 fattura importata" : `${s.invoicesToConfirm.count} fatture importate`} da confermare: sono già pagate?`, body: `Arrivate già oltre la scadenza (${fmt(s.invoicesToConfirm.amount)} ${s.currency}). Dì a MOAI OS se le hai pagate: finché non rispondi non contano come scadute.`, href: "/invoices?confirm=1" });
   }
   if (s.invoicesDueSoon.length) {
     const total = s.invoicesDueSoon.reduce((a, i) => a + Number(i.amount), 0);
@@ -80,8 +85,8 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     db.shipment.count({ where: { organizationId, deletedAt: null, problem: true } }),
     db.paymentTransaction.count({ where: { organizationId, deletedAt: null, ledger: "PROCESSOR", inPerson: false, status: "SUCCESS", kind: { in: ["SALE", "CAPTURE", "REFUND", "CHARGEBACK"] }, processedAt: { lt: new Date(now.getTime() - 7 * DAY) }, reconciliations: { none: { type: "PAYMENT_ORDER", status: { in: ["AUTO_MATCHED", "CONFIRMED"] } } } } }),
     db.reconciliation.count({ where: { organizationId, status: "SUGGESTED" } }),
-    db.invoice.findMany({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentStatus: { in: ["UNPAID", "PARTIAL", "UNKNOWN"] }, nextDueDate: { gte: now, lte: new Date(now.getTime() + 7 * DAY) } }, select: { number: true, senderName: true, nextDueDate: true, totalAmount: true }, take: 50 }),
-    db.invoice.findMany({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentStatus: { in: ["UNPAID", "PARTIAL", "UNKNOWN"] }, nextDueDate: { lt: now } }, select: { number: true, senderName: true, nextDueDate: true, totalAmount: true }, take: 50 }),
+    db.invoice.findMany({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentStatus: { in: ["UNPAID", "PARTIAL", "UNKNOWN"] }, paymentToConfirm: false, nextDueDate: { gte: now, lte: new Date(now.getTime() + 7 * DAY) } }, select: { number: true, senderName: true, nextDueDate: true, totalAmount: true }, take: 50 }),
+    db.invoice.findMany({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentStatus: { in: ["UNPAID", "PARTIAL", "UNKNOWN"] }, paymentToConfirm: false, nextDueDate: { lt: now } }, select: { number: true, senderName: true, nextDueDate: true, totalAmount: true }, take: 50 }),
     db.syncJob.count({ where: { organizationId, status: "DEAD" } }),
     db.integrationConnection.findMany({ where: { organizationId } }),
     db.productVariant.findMany({ where: { organizationId, deletedAt: null, isDemo: false, inventoryTracked: true, inventoryQuantity: { not: null, lte: lowStockThreshold }, product: { deletedAt: null, status: { in: ["ACTIVE", "active"] } } }, select: { sku: true, title: true, inventoryQuantity: true, product: { select: { title: true } } }, take: 100 }),
@@ -92,6 +97,7 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     db.order.count({ where: { organizationId, deletedAt: null, test: false, cancelledAt: null, isDemo: false, processedAt: { gte: new Date(now.getTime() - 35 * DAY), lt: new Date(now.getTime() - 7 * DAY) } } }),
     monthSpendUsd(organizationId),
   ]);
+  const toConfirm = await db.invoice.aggregate({ where: { organizationId, deletedAt: null, direction: "PASSIVE", paymentToConfirm: true }, _count: { _all: true }, _sum: { totalAmount: true } });
   const lastBackup = await db.auditLog.findFirst({ where: { action: "backup.created" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
   const { getConnector } = await import("../connectors/registry");
   return {
@@ -102,6 +108,7 @@ export async function collectSnapshot(organizationId: string): Promise<MonitorSn
     unreconciledOldTx,
     suggestedReconciliations: suggested,
     invoicesDueSoon: dueSoon.map((i) => ({ number: i.number, counterparty: i.senderName, dueDate: i.nextDueDate!, amount: i.totalAmount.toFixed(2) })),
+    invoicesToConfirm: { count: toConfirm._count._all, amount: (toConfirm._sum.totalAmount ?? 0).toString() },
     invoicesOverdue: overdue.map((i) => ({ number: i.number, counterparty: i.senderName, dueDate: i.nextDueDate!, amount: i.totalAmount.toFixed(2) })),
     deadJobs,
     connections: connections.map((c) => {
