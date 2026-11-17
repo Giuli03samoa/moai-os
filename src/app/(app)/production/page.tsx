@@ -8,21 +8,25 @@ import { EXPENSE_CATEGORY_LABEL, PRODUCTION_STATUS_LABEL } from "@/lib/labels";
 import { PeriodFilter } from "@/components/period-filter";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Notice, PageHeader, Select, TBody, TD, TH, THead, TR, Table, Textarea } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
+import { GarmentsTab } from "./garments-tab";
+import { MaterialsTab } from "./materials-tab";
 
 type SP = Record<string, string | undefined>;
 
 export default async function ProductionPage({ searchParams }: { searchParams: Promise<SP> }) {
   const auth = await requireAuth();
   const sp = await searchParams;
-  const tab = sp.tab ?? "orders";
+  const TABS = [["garments", "Capi"], ["materials", "Tessuti e materiali"], ["orders", "Ordini di produzione"], ["suppliers", "Fornitori"], ["expenses", "Spese"]] as const;
+  const tab = TABS.some(([t]) => t === sp.tab) ? sp.tab! : "garments";
   const range = resolvePeriod(sp, auth.timezone);
   const orgId = auth.organizationId;
-  const [orders, suppliers, projects, expenses, byCat] = await Promise.all([
-    db.productionOrder.findMany({ where: { organizationId: orgId }, orderBy: [{ status: "asc" }, { expectedAt: "asc" }], include: { supplier: { select: { name: true } }, designProject: { select: { id: true, name: true } } } }),
+  const [orders, suppliers, projects, expenses, byCat, garments] = await Promise.all([
+    db.productionOrder.findMany({ where: { organizationId: orgId }, orderBy: [{ status: "asc" }, { expectedAt: "asc" }], include: { supplier: { select: { name: true } }, designProject: { select: { id: true, name: true } }, garmentSpec: { select: { id: true, name: true } } } }),
     db.supplier.findMany({ where: { organizationId: orgId }, orderBy: { name: "asc" }, include: { _count: { select: { productionOrders: true } } } }),
     db.designProject.findMany({ where: { organizationId: orgId, archivedAt: null }, select: { id: true, name: true }, orderBy: { updatedAt: "desc" } }),
     db.expense.findMany({ where: { organizationId: orgId, date: { gte: range.from, lte: range.to } }, orderBy: { date: "desc" }, take: 200 }),
     db.expense.groupBy({ by: ["category"], where: { organizationId: orgId, date: { gte: range.from, lte: range.to } }, _sum: { amount: true } }),
+    db.garmentSpec.findMany({ where: { organizationId: orgId, archivedAt: null }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   const canEdit = hasRole(auth.role, "OPERATIONS");
   const canMoney = hasRole(auth.role, "ACCOUNTANT");
@@ -30,7 +34,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const expTotal = byCat.reduce((a, c) => a + Number(c._sum.amount ?? 0), 0);
   return (
     <div>
-      <PageHeader title="Produzione e costi" subtitle="Fornitori, ordini di produzione e spese gestionali: la base per il margine stimato. MOAI OS registra e monitora; gli ordini ai fornitori li fai tu." actions={tab === "expenses" ? <PeriodFilter basePath="/production" current={range.key} from={range.from} to={range.to} tz={auth.timezone} extra={{ tab }} /> : null} />
+      <PageHeader title="Produzione e costi" subtitle="Ogni capo con i suoi tessuti, consumi e costo per pezzo; poi lotti, fornitori e spese. MOAI OS registra e calcola; gli ordini ai fornitori li fai tu." actions={tab === "expenses" ? <PeriodFilter basePath="/production" current={range.key} from={range.from} to={range.to} tz={auth.timezone} extra={{ tab }} /> : null} />
       {sp.notice ? <div className="mb-4"><Notice tone="ok">{sp.notice}</Notice></div> : null}
       {sp.error ? <div className="mb-4"><Notice tone="bad">{sp.error}</Notice></div> : null}
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -39,8 +43,11 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
         <Card><div className="p-4"><p className="text-[11px] uppercase tracking-wide text-graphite">Fornitori</p><p className="mt-1 text-lg font-medium tabular">{suppliers.length}</p><p className="text-xs text-graphite">lead time medio {suppliers.length ? Math.round(suppliers.reduce((a, s) => a + (s.leadTimeDays ?? 0), 0) / suppliers.length) : 0} giorni</p></div></Card>
       </div>
       <div className="mb-4 flex gap-1">
-        {[["orders", "Ordini di produzione"], ["suppliers", "Fornitori"], ["expenses", "Spese"]].map(([t, l]) => <Link key={t} href={`/production?tab=${t}`} className={`rounded-full px-3 py-1 text-xs ${tab === t ? "bg-blackout text-crocus" : "bg-cloud text-graphite hover:text-blackout"}`}>{l}</Link>)}
+        {TABS.map(([t, l]) => <Link key={t} href={`/production?tab=${t}`} className={`rounded-full px-3 py-1 text-xs ${tab === t ? "bg-blackout text-crocus" : "bg-cloud text-graphite hover:text-blackout"}`}>{l}</Link>)}
       </div>
+
+      {tab === "garments" ? <GarmentsTab orgId={orgId} currency={auth.currency} canEdit={canEdit} /> : null}
+      {tab === "materials" ? <MaterialsTab orgId={orgId} currency={auth.currency} tz={auth.timezone} canEdit={canEdit} editId={sp.edit} /> : null}
 
       {tab === "orders" ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -51,7 +58,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
                 <TBody>{orders.map((o) => { const st = PRODUCTION_STATUS_LABEL[o.status]!; const late = o.expectedAt && o.expectedAt < new Date() && !["RECEIVED", "CANCELLED"].includes(o.status); return (
                   <TR key={o.id}>
                     <TD className="whitespace-nowrap font-mono text-xs">{o.reference}</TD>
-                    <TD><p>{o.description}</p>{o.designProject ? <Link href={`/design/${o.designProject.id}`} className="text-[11px] text-graphite hover:underline">{o.designProject.name}</Link> : null}</TD>
+                    <TD><p>{o.description}</p>{o.garmentSpec ? <Link href={`/production/garments/${o.garmentSpec.id}`} className="mr-2 text-[11px] text-graphite hover:underline">Capo: {o.garmentSpec.name}</Link> : null}{o.designProject ? <Link href={`/design/${o.designProject.id}`} className="text-[11px] text-graphite hover:underline">{o.designProject.name}</Link> : null}</TD>
                     <TD className="text-xs">{o.supplier?.name ?? "—"}</TD>
                     <TD className="text-right tabular">{o.quantity ?? "—"}</TD>
                     <TD className="text-right tabular">{o.totalCost ? fmtMoney(o.totalCost.toString(), o.currency) : "—"}</TD>
@@ -67,6 +74,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
               <Field label="Riferimento"><Input name="reference" required placeholder="PO-2026-001" /></Field>
               <Field label="Descrizione"><Input name="description" required placeholder="MOTION Tee nera, 120 pz" /></Field>
               <Field label="Fornitore"><Select name="supplierId" defaultValue=""><option value="">—</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
+              <Field label="Capo"><Select name="garmentSpecId" defaultValue=""><option value="">—</option>{garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Select></Field>
               <Field label="Progetto design"><Select name="designProjectId" defaultValue=""><option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
               <div className="grid grid-cols-3 gap-2"><Field label="Q.tà"><Input name="quantity" type="number" min={1} /></Field><Field label="Costo unit."><Input name="unitCost" placeholder="12,50" /></Field><Field label="Totale"><Input name="totalCost" placeholder="auto" /></Field></div>
               <div className="grid grid-cols-2 gap-2"><Field label="Ordinato il"><Input name="orderedAt" type="date" /></Field><Field label="Atteso il"><Input name="expectedAt" type="date" /></Field></div>

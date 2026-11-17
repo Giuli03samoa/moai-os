@@ -317,6 +317,9 @@ model Organization {
   designAssets        DesignAsset[]
   suppliers           Supplier[]
   productionOrders    ProductionOrder[]
+  materials           Material[]
+  garmentSpecs        GarmentSpec[]
+  garmentComponents   GarmentComponent[]
   expenses            Expense[]
   marketingSnapshots  MarketingSnapshot[]
   socialPosts         SocialPost[]
@@ -453,6 +456,7 @@ model Product {
   deletedAt       DateTime?
   organization    Organization     @relation(fields: [organizationId], references: [id])
   variants        ProductVariant[]
+  garmentSpecs    GarmentSpec[]
 
   @@unique([organizationId, source, externalId])
 }
@@ -1137,6 +1141,8 @@ model Supplier {
   updatedAt        DateTime          @updatedAt
   organization     Organization      @relation(fields: [organizationId], references: [id])
   productionOrders ProductionOrder[]
+  materials        Material[]
+  garmentSpecs     GarmentSpec[]
 
   @@unique([organizationId, name])
 }
@@ -1146,6 +1152,7 @@ model ProductionOrder {
   organizationId  String
   supplierId      String?
   designProjectId String?
+  garmentSpecId   String? // the garment this lot produces
   reference       String // internal PO number
   description     String
   status          ProductionStatus @default(PLANNED)
@@ -1163,9 +1170,89 @@ model ProductionOrder {
   organization    Organization     @relation(fields: [organizationId], references: [id])
   supplier        Supplier?        @relation(fields: [supplierId], references: [id])
   designProject   DesignProject?   @relation(fields: [designProjectId], references: [id])
+  garmentSpec     GarmentSpec?     @relation(fields: [garmentSpecId], references: [id])
 
   @@unique([organizationId, reference])
   @@index([organizationId, status, expectedAt])
+}
+
+enum MaterialKind {
+  FABRIC // tessuto a metro
+  TRIM // costine, zip, elastici, coulisse
+  LABEL // etichette, cartellini
+  PRINT // transfer, loghi, stampe
+  PACKAGING
+  OTHER
+}
+
+/// A fabric or accessory bought from a supplier. Purchases are read from the supplier invoice lines (invoiceMatch).
+model Material {
+  id             String             @id @default(cuid())
+  organizationId String
+  supplierId     String?
+  kind           MaterialKind       @default(FABRIC)
+  name           String // e.g. "Renew Action"
+  variant        String? // colour or base: "bianco per stampa", "nero"
+  composition    String? // as declared by the supplier
+  weightGsm      Int?
+  widthCm        Int?
+  unit           String             @default("m") // m | pz | foglio
+  unitPrice      Decimal?           @db.Decimal(18, 4) // last known price, VAT excluded
+  invoiceMatch   String? // text that identifies this material in the supplier invoice lines
+  notes          String?
+  archivedAt     DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  supplier       Supplier?          @relation(fields: [supplierId], references: [id])
+  components     GarmentComponent[]
+
+  @@index([organizationId, kind])
+}
+
+/// Production sheet of a garment: who makes it, what it is made of, what one piece costs.
+model GarmentSpec {
+  id               String             @id @default(cuid())
+  organizationId   String
+  productId        String? // the Shopify product it is sold as
+  name             String
+  modelCode        String? // maker's article code, e.g. FP007
+  makerId          String? // who cuts and sews it
+  composition      String? // as printed on the label
+  sewingCost       Decimal?           @db.Decimal(18, 4) // confezione per piece, VAT excluded
+  developmentCost  Decimal?           @db.Decimal(18, 4) // one-off pattern and grading cost of the first lot
+  lotSize          Int? // pieces of the first lot, to spread the development cost
+  extraCost        Decimal?           @db.Decimal(18, 4) // anything else per piece (printing, packaging)
+  extraCostNote    String?
+  notes            String?
+  archivedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  product          Product?           @relation(fields: [productId], references: [id])
+  maker            Supplier?          @relation(fields: [makerId], references: [id])
+  components       GarmentComponent[]
+  productionOrders ProductionOrder[]
+
+  @@index([organizationId])
+}
+
+/// One material in a garment, with the quantity used by one piece (null = still unknown).
+model GarmentComponent {
+  id             String       @id @default(cuid())
+  organizationId String
+  garmentId      String
+  materialId     String
+  role           String? // "tessuto principale", "polsini e fondo", "logo"...
+  qtyPerUnit     Decimal?     @db.Decimal(18, 4)
+  estimated      Boolean      @default(true) // true until the maker confirms the consumption
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  garment        GarmentSpec  @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  material       Material     @relation(fields: [materialId], references: [id])
+
+  @@index([garmentId])
 }
 
 model Expense {

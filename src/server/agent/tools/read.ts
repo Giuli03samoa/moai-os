@@ -502,8 +502,37 @@ export const getAuditRecent = defineTool({
   },
 });
 
+export const listGarments = defineTool({
+  name: "list_garments",
+  description: "Schede di produzione dei capi (sezione Produzione → Capi): confezionista, codice modello, composizione, distinta con tessuti e consumo a capo, costo per capo (primo lotto e riordini, IVA esclusa), margine sul prezzo del negozio e lotti collegati. Con includeMaterials anche l'elenco dei tessuti e materiali con composizione, prezzo e acquisti letti dalle fatture dei fornitori. Usala per restock, costi per capo e domande sui tessuti. I consumi con estimated: true sono stime non confermate dal confezionista.",
+  schema: z.object({ query: z.string().max(80).optional().describe("Filtra per nome del capo"), includeMaterials: z.boolean().optional() }),
+  risk: "read",
+  minRole: "VIEWER",
+  summarize: (i) => `Schede capi${i.query ? ` "${i.query}"` : ""}${i.includeMaterials ? " e tessuti" : ""}`,
+  async run(ctx, input) {
+    const { garmentInclude, summarizeGarment, materialPurchases } = await import("../../production/garments");
+    const q = input.query?.trim();
+    const garments = await db.garmentSpec.findMany({ where: { organizationId: ctx.organizationId, archivedAt: null, ...(q ? { name: { contains: q, mode: "insensitive" } } : {}) }, include: garmentInclude, orderBy: { name: "asc" } });
+    const out: Record<string, unknown> = {
+      currency: ctx.currency,
+      garments: garments.map((g) => {
+        const s = summarizeGarment(g);
+        return { id: g.id, name: g.name, product: g.product?.title ?? null, modelCode: g.modelCode, maker: g.maker?.name ?? null, composition: g.composition, sewingCost: g.sewingCost, developmentCost: g.developmentCost, firstLotSize: g.lotSize, extraCost: g.extraCost, extraCostNote: g.extraCostNote, notes: g.notes, components: s.cost.lines, costPerPieceFirstLot: s.cost.firstLot, costPerPieceRestock: s.cost.restock, componentsWithoutCost: s.cost.missing, consumptionEstimated: s.cost.estimated, shopPriceInclVat: s.price, marginFirstLot: s.marginFirst, marginRestock: s.marginRestock, lots: g.productionOrders };
+      }),
+    };
+    if (input.includeMaterials) {
+      const mats = await db.material.findMany({ where: { organizationId: ctx.organizationId, archivedAt: null }, include: { supplier: { select: { name: true } } }, orderBy: { name: "asc" } });
+      out.materials = await Promise.all(mats.map(async (m) => {
+        const p = await materialPurchases(ctx.organizationId, m);
+        return { name: m.name, variant: m.variant, kind: m.kind, supplier: m.supplier?.name ?? null, composition: m.composition, weightGsm: m.weightGsm, widthCm: m.widthCm, unit: m.unit, unitPrice: m.unitPrice, bought: { qty: p.qty, amount: p.amount, last: p.last }, notes: m.notes };
+      }));
+    }
+    return plain(out);
+  },
+});
+
 export const READ_TOOLS = [
   getBusinessOverview, getSalesTimeseries, searchOrders, getOrder, listPayments, listPayouts, listReconciliationItems, listInvoices, listShipments, listProducts, searchCustomers,
-  getIntegrationsStatus, listSyncJobs, listAlerts, listTasks, getMarketingOverview, listDesignProjects, getDesignProject, listProductionOrders, listExpenses, getPnlEstimate,
+  getIntegrationsStatus, listSyncJobs, listAlerts, listTasks, getMarketingOverview, listDesignProjects, getDesignProject, listProductionOrders, listGarments, listExpenses, getPnlEstimate,
   searchMemory, listSkills, loadSkillTool, getAuditRecent,
 ];
