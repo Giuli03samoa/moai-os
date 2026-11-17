@@ -52,6 +52,7 @@ export default async function BilancioPage({ searchParams }: { searchParams: Pro
             <Rows rows={[
               ["Vendite online (Shopify)", money(r.revenue.online), r.revenue.onlineOrders === 1 ? "1 ordine" : `${r.revenue.onlineOrders} ordini`],
               ["Vendite in presenza (SumUp)", money(r.revenue.inPerson), r.revenue.inPersonSales === 1 ? "1 incasso" : `${r.revenue.inPersonSales} incassi`],
+              ["Fatture emesse ad aziende", money(r.revenue.invoiced), r.revenue.invoicedCount === 1 ? "1 fattura" : `${r.revenue.invoicedCount} fatture`],
             ]} total={["Totale ricavi", money(r.revenue.total)]} />
           </CardContent>
         </Card>
@@ -109,7 +110,7 @@ export default async function BilancioPage({ searchParams }: { searchParams: Pro
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Cassa</CardTitle><CardDescription>Soldi entrati e usciti davvero, IVA inclusa.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Cassa</CardTitle><CardDescription>Soldi entrati e usciti davvero, IVA inclusa{r.cash.bankUntil ? `. Dalla banca fino al ${fmtDate(r.cash.bankUntil, auth.timezone)}` : ""}.</CardDescription></CardHeader>
           <CardContent>
             <Rows rows={[["Entrate", money(r.cash.in), r.cash.inNote], ["Uscite", `−${money(r.cash.out)}`, r.cash.outNote]]} total={["Differenza", money(r.cash.balance)]} />
           </CardContent>

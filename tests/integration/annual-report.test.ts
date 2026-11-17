@@ -31,3 +31,26 @@ describe("annual report", () => {
     expect(r.missing[0]).toMatch(/Estratto conto/);
   });
 });
+
+describe("annual report with B2B invoices and a bank statement", () => {
+  it("counts issued invoices as revenue and takes cash from the bank up to its last movement", async () => {
+    const org = await makeOrg();
+    const day = (d: string) => new Date(`${d}T12:00:00Z`);
+    const a = await db.invoice.create({ data: { organizationId: org.id, source: "XML_UPLOAD", direction: "ACTIVE", dedupeKey: "A1", documentType: "TD01", number: "FPR 1/26", issueDate: day("2026-02-06"), currency: "EUR", totalAmount: 3050, taxableAmount: 2500, taxAmount: 550, senderName: "Noi", receiverName: "Cliente" } as never });
+    await db.invoiceInstallment.create({ data: { organizationId: org.id, invoiceId: a.id, position: 1, amount: 3050, dueDate: day("2026-02-06"), paidAt: day("2026-02-25") } as never });
+    const late = await db.invoice.create({ data: { organizationId: org.id, source: "XML_UPLOAD", direction: "ACTIVE", dedupeKey: "A2", documentType: "TD01", number: "FPR 2/26", issueDate: day("2026-10-01"), currency: "EUR", totalAmount: 610, taxableAmount: 500, taxAmount: 110, senderName: "Noi", receiverName: "Cliente" } as never });
+    await db.invoiceInstallment.create({ data: { organizationId: org.id, invoiceId: late.id, position: 1, amount: 610, dueDate: day("2026-10-01"), paidAt: day("2026-10-20") } as never });
+    const bt = (id: string, d: string, amount: string) => db.bankTransaction.create({ data: { organizationId: org.id, source: "BANK_CSV", accountLabel: "Conto", externalId: id, bookingDate: day(d), amount, currency: "EUR", description: id } });
+    await bt("b1", "2026-02-25", "3050");
+    await bt("b2", "2026-03-01", "-200");
+    await bt("b3", "2026-09-30", "-60");
+
+    const r = await annualReport(org.id, 2026);
+    expect(r.revenue.invoiced).toBe("3000.00");
+    expect(r.revenue.total).toBe("3000.00");
+    expect(r.vat.onSales).toBe("660.00");
+    // Bank up to 30/09 (3050 in, 260 out), then the invoice collected on 20/10 (610): never counted twice.
+    expect(r.cash).toMatchObject({ in: "3660.00", out: "260.00" });
+    expect(r.cash.bankUntil?.toISOString().slice(0, 10)).toBe("2026-09-30");
+  });
+});
